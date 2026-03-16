@@ -7,7 +7,12 @@ export default function Veredelung() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [placementIndex, setPlacementIndex] = useState<number | null>(null);
 
-  const placementImages = ['/1.png', '/2.png', '/3.png', '/4.png'];
+  const placementImages = [
+    '/workwear/1.png',
+    '/workwear/2.png',
+    '/workwear/3.png',
+    '/workwear/4.png',
+  ];
 
   const goNext = () => {
     if (placementIndex !== null) {
