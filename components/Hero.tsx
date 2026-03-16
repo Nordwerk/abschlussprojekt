@@ -23,9 +23,10 @@ export default function Hero() {
           Konzept · Beratung · Veredelung
         </p>
 
+        {/* Button is hidden in responsive versions */}
         <a
           href="#kontakt"
-          className="bg-nordwerk-orange text-black px-6 sm:px-8 py-3 sm:py-4 rounded-2xl text-base sm:text-lg font-semibold hover:scale-105 hover:text-white transition inline-block"
+          className="hidden md:inline-block bg-nordwerk-orange text-black px-6 sm:px-8 py-3 sm:py-4 rounded-2xl text-base sm:text-lg font-semibold hover:scale-105 hover:text-white transition"
         >
           Jetzt unverbindlich anfragen
         </a>
