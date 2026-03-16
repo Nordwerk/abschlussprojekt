@@ -81,7 +81,7 @@ export default function Veredelung() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8 mb-8 sm:mb-12 md:mb-16">
 
           {/* Textildruck */}
-          <div className="bg-white p-5 sm:p-6 md:p-8 rounded-2xl shadow-xl text-center md:text-left">
+          <div className="bg-white p-5 sm:p-6 md:p-8 rounded-2xl shadow-xl text-center">
             <div className="text-2xl sm:text-3xl mb-3 sm:mb-4"></div>
             <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 sm:mb-3">Textildruck</h3>
             <p className="text-gray-600 mb-3 sm:mb-4 leading-relaxed text-sm sm:text-base">
@@ -99,7 +99,7 @@ export default function Veredelung() {
           </div>
 
           {/* Stick */}
-          <div className="bg-white p-5 sm:p-6 md:p-8 rounded-2xl shadow-xl text-center md:text-left">
+          <div className="bg-white p-5 sm:p-6 md:p-8 rounded-2xl shadow-xl text-center">
             <div className="text-2xl sm:text-3xl mb-3 sm:mb-4"></div>
             <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 sm:mb-3">Stick</h3>
             <p className="text-gray-600 mb-3 sm:mb-4 leading-relaxed text-sm sm:text-base">

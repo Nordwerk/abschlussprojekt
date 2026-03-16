@@ -1,8 +1,8 @@
 import Image from "next/image";
 
 const partners = [
-  { src: "/partner1.jpg", alt: "Partner 1" },
-  { src: "/partner2.jpg", alt: "Partner 2" },
+  { src: "/partner2.jpg", alt: "Partner 2" }, // Moved to the first position
+  { src: "/partner1.jpg", alt: "Partner 1" }, // Moved to the second position
   { src: "/partner3.jpg", alt: "Partner 3" },
 ];
 
