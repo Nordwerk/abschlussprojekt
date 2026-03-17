@@ -33,7 +33,7 @@ export default function Partners() {
                 alt={partner.alt}
                 width={250}
                 height={150}
-                className="object-contain max-h-[100px] sm:max-h-[120px] w-auto"
+                className="object-contain max-h-[100px] sm:max-h-[120px] w-auto rounded-xl"
               />
             </div>
           ))}
