@@ -162,11 +162,26 @@ export default function Konfigurator() {
     assignAssetToZone(zoneId, assetId);
   }
 
-  function addZone() {
-    if (hasReachedZoneLimit) return;
+  function getNextAvailableZoneIndex() {
+    const usedIndexes = new Set(
+      zones
+        .map((zone) => {
+          const match = /^zone-(\d+)$/.exec(zone.id);
+          return match ? Number(match[1]) : null;
+        })
+        .filter((index): index is number => index !== null),
+    );
 
-    const nextIndex = zoneCounterRef.current;
-    zoneCounterRef.current += 1;
+    for (let index = 1; index <= MAX_ZONES_PER_WORKWEAR_IMAGE; index += 1) {
+      if (!usedIndexes.has(index)) return index;
+    }
+
+    return null;
+  }
+
+  function addZone() {
+    const nextIndex = getNextAvailableZoneIndex();
+    if (nextIndex === null) return;
 
     const nextZone = createZone(nextIndex);
     setZones((previous) => [...previous, nextZone]);
