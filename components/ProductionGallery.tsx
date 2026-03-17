@@ -94,6 +94,10 @@ export default function ProductionGallery() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [next, prev]);
 
+  const handleImageClick = (index: number) => {
+    goTo(index);
+  };
+
   return (
     <section id="produktion" className="scroll-mt-32 sm:scroll-mt-36 py-10 sm:py-14 md:py-20 px-4 sm:px-6 overflow-hidden">
       <div className="max-w-5xl mx-auto text-center">
@@ -103,7 +107,7 @@ export default function ProductionGallery() {
 
         {/* Flat Slider Carousel */}
         <div
-          className="relative mx-auto select-none overflow-hidden border-gray-400"
+          className="relative mx-auto select-none overflow-hidden border-gray-300"
           ref={trackRef}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -127,6 +131,7 @@ export default function ProductionGallery() {
                 <div
                   key={card.title}
                   className="w-full flex-shrink-0 px-4 sm:px-6"
+                  onClick={() => handleImageClick(i)} // Added click handler for sliding
                 >
                   <div
                     className={`max-w-md mx-auto bg-white/95 backdrop-blur-sm rounded-2xl p-6 sm:p-8 text-left flex flex-col border-2 transition-all duration-500 ${
