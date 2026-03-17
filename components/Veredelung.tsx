@@ -6,6 +6,8 @@ import Image from "next/image";
 export default function Veredelung() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [placementIndex, setPlacementIndex] = useState<number | null>(null);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
 
   const placementImages = ['/1.png', '/2.png', '/3.png', '/4.png'];
 
@@ -19,6 +21,26 @@ export default function Veredelung() {
     if (placementIndex !== null) {
       setPlacementIndex((placementIndex - 1 + placementImages.length) % placementImages.length);
     }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    setTouchStartX(touch.clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartX) return;
+    const touch = e.touches[0];
+    setTouchEndX(touch.clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX || !touchEndX) return;
+    const diff = touchStartX - touchEndX;
+    if (diff > 50) goNext(); // Swipe left
+    if (diff < -50) goPrev(); // Swipe right
+    setTouchStartX(null);
+    setTouchEndX(null);
   };
 
   useEffect(() => {
@@ -278,6 +300,9 @@ export default function Veredelung() {
         <div
           className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm cursor-pointer p-4"
           onClick={() => setPlacementIndex(null)}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
           {/* Prev Button */}
           <button
