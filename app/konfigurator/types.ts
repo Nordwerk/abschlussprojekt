@@ -17,6 +17,7 @@ export type ZoneRect = {
   w: number;
   h: number;
   scale: number;
+  rotation: number;
   assetId: string | null;
   artworkOffset: Point;
 };

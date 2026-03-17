@@ -164,12 +164,20 @@ export default function Konfigurator() {
     updateZone(zoneId, (zone) => ({
       ...zone,
       assetId,
+      rotation: 0,
       artworkOffset: { x: 0, y: 0 },
     }));
   }
 
   function updateScale(nextScale: number) {
     updateSelectedZone((zone) => ({ ...zone, scale: clampScale(nextScale) }));
+  }
+
+  function rotateArtwork(degrees: number) {
+    updateSelectedZone((zone) => ({
+      ...zone,
+      rotation: (zone.rotation + degrees + 360) % 360,
+    }));
   }
 
   function updateZoneSize(nextWidth: number) {
@@ -285,6 +293,7 @@ export default function Konfigurator() {
     updateZone(zoneId, (zone) => ({
       ...zone,
       assetId: null,
+      rotation: 0,
       artworkOffset: { x: 0, y: 0 },
     }));
   }
@@ -511,6 +520,25 @@ export default function Konfigurator() {
                         Bild Entfernen
                       </button>
                     ) : null}
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="flex-1 rounded-md bg-white/10 py-2 text-xs font-medium text-white transition hover:bg-white/20 disabled:opacity-40"
+                      onClick={() => rotateArtwork(-5)}
+                      disabled={!selectedAsset}
+                    >
+                      ↺ Links
+                    </button>
+                    <button
+                      type="button"
+                      className="flex-1 rounded-md bg-white/10 py-2 text-xs font-medium text-white transition hover:bg-white/20 disabled:opacity-40"
+                      onClick={() => rotateArtwork(5)}
+                      disabled={!selectedAsset}
+                    >
+                      ↻ Rechts
+                    </button>
                   </div>
 
                   <div className="mt-4 flex items-center gap-2">

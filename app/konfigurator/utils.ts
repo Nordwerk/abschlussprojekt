@@ -24,6 +24,7 @@ export function createZone(index: number): ZoneRect {
     w: INITIAL_ZONE_RECT.w,
     h: INITIAL_ZONE_RECT.h,
     scale: 1,
+    rotation: 0,
     assetId: null,
     artworkOffset: { x: 0, y: 0 },
   };

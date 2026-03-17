@@ -94,7 +94,7 @@ export default function WorkwearZone({
             alt={asset.name}
             className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain"
             style={{
-              transform: `translate(${zone.artworkOffset.x}px, ${zone.artworkOffset.y}px) scale(${zone.scale})`,
+              transform: `translate(${zone.artworkOffset.x}px, ${zone.artworkOffset.y}px) rotate(${zone.rotation}deg) scale(${zone.scale})`,
               transformOrigin: 'center',
             }}
           />
