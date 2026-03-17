@@ -45,10 +45,35 @@ import {
   maxPanForZoom,
 } from "./utils";
 
+type WorkwearZoneState = {
+  zones: ZoneRect[];
+  selectedZoneId: string;
+  nextZoneIndex: number;
+};
+
+function createInitialWorkwearZoneState(): WorkwearZoneState {
+  const firstZone = createZone(1);
+
+  return {
+    zones: [firstZone],
+    selectedZoneId: firstZone.id,
+    nextZoneIndex: 2,
+  };
+}
+
+function getValidSelectedZoneId(zones: ZoneRect[], preferredZoneId: string) {
+  if (zones.some((zone) => zone.id === preferredZoneId)) return preferredZoneId;
+  return zones[0]?.id ?? "zone-1";
+}
+
 export default function Konfigurator() {
+  const initialWorkwearZoneState = createInitialWorkwearZoneState();
+
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [zones, setZones] = useState<ZoneRect[]>([createZone(1)]);
-  const [selectedZoneId, setSelectedZoneId] = useState("zone-1");
+  const [zones, setZones] = useState<ZoneRect[]>(initialWorkwearZoneState.zones);
+  const [selectedZoneId, setSelectedZoneId] = useState(
+    initialWorkwearZoneState.selectedZoneId,
+  );
   const [previewOnly, setPreviewOnly] = useState(false);
   const [activeWorkwearIndex, setActiveWorkwearIndex] = useState(
     DEFAULT_WORKWEAR_INDEX,
@@ -59,8 +84,11 @@ export default function Konfigurator() {
   const [zoneDrag, setZoneDrag] = useState<ZoneDragState | null>(null);
   const [artworkDrag, setArtworkDrag] = useState<ArtworkDragState | null>(null);
 
-  const zoneCounterRef = useRef(2);
+  const zoneCounterRef = useRef(initialWorkwearZoneState.nextZoneIndex);
   const urlsRef = useRef<string[]>([]);
+  const workwearStateRef = useRef<Record<number, WorkwearZoneState>>({
+    [DEFAULT_WORKWEAR_INDEX]: initialWorkwearZoneState,
+  });
   const previewFrameRef = useRef<HTMLDivElement | null>(null);
   const zoneBoxRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -280,12 +308,44 @@ export default function Konfigurator() {
     setViewPan({ x: 0, y: 0 });
   }
 
+  function saveCurrentWorkwearState(index: number) {
+    workwearStateRef.current[index] = {
+      zones,
+      selectedZoneId: getValidSelectedZoneId(zones, selectedZoneId),
+      nextZoneIndex: zoneCounterRef.current,
+    };
+  }
+
+  function loadWorkwearState(index: number) {
+    const savedState = workwearStateRef.current[index];
+
+    if (savedState) {
+      const validSelectedZoneId = getValidSelectedZoneId(
+        savedState.zones,
+        savedState.selectedZoneId,
+      );
+
+      setZones(savedState.zones);
+      setSelectedZoneId(validSelectedZoneId);
+      zoneCounterRef.current = savedState.nextZoneIndex;
+      return;
+    }
+
+    const initialState = createInitialWorkwearZoneState();
+    workwearStateRef.current[index] = initialState;
+    setZones(initialState.zones);
+    setSelectedZoneId(initialState.selectedZoneId);
+    zoneCounterRef.current = initialState.nextZoneIndex;
+  }
+
   function changeWorkwearImage(direction: -1 | 1) {
-    setActiveWorkwearIndex((prev) => {
-      const next =
-        (prev + direction + WORKWEAR_IMAGES.length) % WORKWEAR_IMAGES.length;
-      return next;
-    });
+    const nextIndex =
+      (activeWorkwearIndex + direction + WORKWEAR_IMAGES.length) %
+      WORKWEAR_IMAGES.length;
+
+    saveCurrentWorkwearState(activeWorkwearIndex);
+    loadWorkwearState(nextIndex);
+    setActiveWorkwearIndex(nextIndex);
     resetView();
   }
 
