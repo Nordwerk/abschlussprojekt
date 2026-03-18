@@ -1,10 +1,18 @@
-export const WORKWEAR_IMAGES = [
-  '/workwear/1.png',
-  '/workwear/2.png',
-  '/workwear/3.png',
-  '/workwear/4.png',
-] as const;
-export const DEFAULT_WORKWEAR_INDEX = 1;
+const buildImageSequence = (
+  folder: 'jacke' | 'hose',
+  articleNumber: '1250' | '2850',
+) =>
+  Array.from(
+    { length: 24 },
+    (_, index) =>
+      `/${folder}/${articleNumber}-${String(index + 1).padStart(2, '0')}.jpg`,
+  );
+
+export const WORKWEAR_IMAGES: readonly string[] = [
+  ...buildImageSequence('jacke', '1250'),
+  ...buildImageSequence('hose', '2850'),
+];
+export const DEFAULT_WORKWEAR_INDEX = 0;
 
 export const PREVIEW_DROP_ID = 'preview-drop';
 export const ZONE_DROP_PREFIX = 'zone:';
