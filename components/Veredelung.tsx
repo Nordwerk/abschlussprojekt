@@ -7,7 +7,9 @@ export default function Veredelung() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [placementIndex, setPlacementIndex] = useState<number | null>(null);
 
+
   const placementImages = ['/vorne.png', '/Rücken.png', '/Seite.png', '/hemd.png'];
+
 
   const goNext = () => {
     if (placementIndex !== null) {

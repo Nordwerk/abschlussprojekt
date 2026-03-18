@@ -127,10 +127,10 @@ export default function ProductionGallery() {
                   className="w-full flex-shrink-0 px-4 sm:px-6"
                 >
                   <div
-                    className={`max-w-md mx-auto bg-white/95 backdrop-blur-sm rounded-2xl p-6 sm:p-8 text-left flex flex-col border-2 transition-all duration-500 ${
+                    className={`max-w-md mx-auto bg-white/95 backdrop-blur-sm rounded-2xl p-6 sm:p-8 text-left flex flex-col border-2 border-gray-400 transition-all duration-500 ${
                       isActive
-                        ? 'border-nordwerk-orange shadow-[0_4px_20px_rgba(245,130,32,0.2)] scale-100'
-                        : 'border-gray-400 shadow-sm scale-95 opacity-60'
+                        ? ''
+                        : 'border-gray-200 shadow-sm scale-95 opacity-60'
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-3">
