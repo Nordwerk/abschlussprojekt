@@ -32,6 +32,13 @@ export default function Navbar() {
     setMenuOpen(false);
   };
 
+  const goToKonfigurator = () => {
+    if (pathname !== '/konfigurator') {
+      router.push('/konfigurator');
+    }
+    setMenuOpen(false);
+  };
+
   return (
     <nav className="fixed top-0 left-0 w-full z-50 bg-black/10 backdrop-blur-[2px] border-b border-white/5">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
@@ -69,6 +76,9 @@ export default function Navbar() {
           <button onClick={() => scrollTo('veredelung')} className="hover:text-white transition duration-300 cursor-pointer">
             Veredelung
           </button>
+          <button onClick={goToKonfigurator} className="hover:text-white transition duration-300 cursor-pointer">
+            Konfigurator
+          </button>
           <button onClick={() => scrollTo('kontakt')} className="border-2 border-nordwerk-orange bg-nordwerk-orange text-black px-5 py-2 rounded-md hover:bg-transparent hover:text-white hover:border-white hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer">
             Anfrage
           </button>
@@ -86,6 +96,9 @@ export default function Navbar() {
           </button>
           <button onClick={() => scrollTo('veredelung')} className="hover:text-white transition duration-300 cursor-pointer">
             Veredelung
+          </button>
+          <button onClick={goToKonfigurator} className="hover:text-white transition duration-300 cursor-pointer">
+            Konfigurator
           </button>
           <button onClick={() => scrollTo('kontakt')} className="border-2 border-nordwerk-orange bg-nordwerk-orange text-black px-5 py-2 rounded-md hover:bg-transparent hover:text-white hover:border-white transition-all duration-300 cursor-pointer">
             Anfrage
