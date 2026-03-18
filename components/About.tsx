@@ -11,27 +11,31 @@ export default function About() {
             </h2>
   
             <p className="text-gray-600 mb-4 leading-relaxed text-sm sm:text-base">
-              Nordwerk Workwear ist ein junges Unternehmen mit klarem Fokus: Wir statten Handwerk und Industrie präzise, gewerkspezifisch und normgerecht aus. Keine Standardlösungen, sondern durchdachte Bekleidungskonzepte, die zum Einsatzbereich passen.
+              Nordwerk Workwear steht für durchdachte Bekleidungskonzepte für Handwerk und Industrie.
             </p>
 
             <p className="text-gray-600 mb-4 leading-relaxed text-sm sm:text-base">
-              Wir wissen, worauf es in der Praxis ankommt. Jeder von uns bringt eigene Erfahrung aus dem Handwerk mit. Anforderungen wie Bewegungsfreiheit, Strapazierfähigkeit, Schutzfunktionen und Alltagstauglichkeit sind für uns keine Theorie, sondern Grundlage jeder Empfehlung.
+              Keine Standardlösungen, sondern Ausstattung, die exakt zum Einsatzbereich passt.
             </p>
 
             <p className="text-gray-600 mb-4 leading-relaxed text-sm sm:text-base">
-              Ob Schweißer, Elektriker, Heizungs- und Sanitärbetrieb oder Maschinenbediener in der Kunststoffverarbeitung – wir stellen die passende Ausstattung zusammen. Funktional. Sicher. Einheitlich im Auftritt.
+              Wir kommen selbst aus dem Handwerk und wissen, worauf es ankommt: Bewegungsfreiheit, Strapazierfähigkeit und Alltagstauglichkeit sind bei uns Standard – nicht Zusatz.
             </p>
 
             <p className="text-gray-600 mb-4 leading-relaxed text-sm sm:text-base">
-              Ein wesentlicher Bestandteil unseres Angebots ist die Veredelung. Mit modernster Drucktechnik und über 30 Jahren Erfahrung im Bereich Textilveredelung liefern wir saubere, langlebige Ergebnisse. Logo, Schriftzug oder individuelles Design – alles aus einer Hand.
+              Ob Elektro, SHK, Metallbau oder Produktion – wir stellen die passende Kleidung zusammen und sorgen für einen einheitlichen, professionellen Auftritt.
             </p>
 
             <p className="text-gray-600 mb-4 leading-relaxed text-sm sm:text-base">
-              Wir beraten persönlich, analysieren Anforderungen im Betrieb und entwickeln ein strukturiertes Bekleidungskonzept für Ihr Unternehmen. Ziel ist ein professionelles, sicheres und einheitliches Erscheinungsbild – intern wie extern.
+              Veredelung gehört bei uns dazu. Mit moderner Drucktechnik und langjähriger Erfahrung liefern wir saubere, langlebige Ergebnisse – alles aus einer Hand.
             </p>
 
             <p className="text-gray-600 leading-relaxed text-sm sm:text-base">
-              Nordwerk steht für klare Lösungen, kurze Wege und zuverlässige Umsetzung.
+              Wir beraten direkt im Betrieb, analysieren den Bedarf und entwickeln ein klares, funktionierendes System für Ihre Arbeitskleidung.
+            </p>
+
+            <p className="text-gray-600 leading-relaxed text-sm sm:text-base">
+              Nordwerk – Arbeitskleidung mit System.
             </p>
           </div>
   
