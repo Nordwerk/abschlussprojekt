@@ -81,14 +81,14 @@ export default function Veredelung() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8 mb-8 sm:mb-12 md:mb-16">
 
           {/* Textildruck */}
-          <div className="bg-gray-200 p-5 sm:p-6 md:p-8 rounded-2xl shadow-xl text-center">
+          <div className="bg-gray-200 p-5 sm:p-6 md:p-8 rounded-2xl shadow-xl text-left">
             <div className="text-2xl sm:text-3xl mb-3 sm:mb-4"></div>
             <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 sm:mb-3">Textildruck</h3>
             <p className="text-gray-600 mb-3 sm:mb-4 leading-relaxed text-sm sm:text-base">
               Ideal für Logos, Schriftzüge und mehrfarbige Motive.
               Detailgenau, waschbeständig und auch bei größeren Stückzahlen wirtschaftlich.
             </p>
-            <ul className="text-gray-500 space-y-1 sm:space-y-2 list-disc list-inside text-sm sm:text-base text-left mx-auto md:mx-0 max-w-xs md:max-w-none">
+            <ul className="text-gray-500 space-y-1 sm:space-y-2 list-disc list-inside text-sm sm:text-base text-left">
               <li>Transferdruck</li>
               <li>DTF-Druck</li>
               <li>Siebdruck (bei größeren Stückzahlen)</li>
@@ -99,7 +99,7 @@ export default function Veredelung() {
           </div>
 
           {/* Stick */}
-          <div className="bg-gray-200 p-5 sm:p-6 md:p-8 rounded-2xl shadow-xl text-center">
+          <div className="bg-gray-200 p-5 sm:p-6 md:p-8 rounded-2xl shadow-xl text-left">
             <div className="text-2xl sm:text-3xl mb-3 sm:mb-4"></div>
             <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 sm:mb-3">Stick</h3>
             <p className="text-gray-600 mb-3 sm:mb-4 leading-relaxed text-sm sm:text-base">
@@ -107,7 +107,7 @@ export default function Veredelung() {
               Besonders geeignet für Polos, Jacken, Sweatshirts und Caps.
               Strapazierfähig und langlebig – auch bei intensiver Nutzung.
             </p>
-            <ul className="text-gray-500 space-y-1 sm:space-y-2 list-disc list-inside text-sm sm:text-base text-left mx-auto md:mx-0 max-w-xs md:max-w-none">
+            <ul className="text-gray-500 space-y-1 sm:space-y-2 list-disc list-inside text-sm sm:text-base text-left">
               <li>Direktstick</li>
               <li>3D-Stick (optional bei Caps etc.)</li>
             </ul>
