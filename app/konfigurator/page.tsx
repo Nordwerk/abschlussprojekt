@@ -2,7 +2,6 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import Image from "next/image";
 import {
   useEffect,
   useMemo,
@@ -23,6 +22,7 @@ import Navbar from "../../components/layout/Navbar";
 import Footer from "../../components/layout/Footer";
 import DraggableAssetCard from "./components/DraggableAssetCard";
 import WorkwearZone from "./components/WorkwearZone";
+import UploadModal from "./components/UploadModal";
 import {
   DEFAULT_WORKWEAR_INDEX,
   MAX_ZONES_PER_WORKWEAR_IMAGE,
@@ -65,6 +65,17 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function getWorkwearSideLabel(imageUrl: string): string {
+  const normalizedUrl = imageUrl.split("?")[0]?.toLowerCase() ?? "";
+
+  if (normalizedUrl.endsWith("/vorne.jpg")) return "Vorne";
+  if (normalizedUrl.endsWith("/links.jpg")) return "Links";
+  if (normalizedUrl.endsWith("/rechts.jpg")) return "Rechts";
+  if (normalizedUrl.endsWith("/hinten.jpg")) return "Hinten";
+
+  return "Ansicht";
+}
+
 export default function Konfigurator() {
   const initialWorkwearZoneState = createInitialWorkwearZoneState();
 
@@ -77,6 +88,7 @@ export default function Konfigurator() {
   const [activeWorkwearIndex, setActiveWorkwearIndex] = useState(
     DEFAULT_WORKWEAR_INDEX,
   );
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [viewZoom, setViewZoom] = useState(1);
   const [viewPan, setViewPan] = useState({ x: 0, y: 0 });
   const [viewPanDrag, setViewPanDrag] = useState<PanDragState | null>(null);
@@ -91,6 +103,7 @@ export default function Konfigurator() {
   const hasHydratedFromLocalStorageRef = useRef(false);
   const previewFrameRef = useRef<HTMLDivElement | null>(null);
   const zoneBoxRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const thumbnailStripRef = useRef<HTMLDivElement | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -122,14 +135,8 @@ export default function Konfigurator() {
       const parsedState: unknown = JSON.parse(rawState);
       if (!isObjectRecord(parsedState)) return;
 
-      const activeIndexCandidate = parsedState.activeWorkwearIndex;
-      const activeIndex =
-        typeof activeIndexCandidate === "number" &&
-        Number.isInteger(activeIndexCandidate) &&
-        activeIndexCandidate >= 0 &&
-        activeIndexCandidate < WORKWEAR_IMAGES.length
-          ? activeIndexCandidate
-          : DEFAULT_WORKWEAR_INDEX;
+      // Always start on jacket after reload; we only restore zone data per image.
+      const activeIndex = DEFAULT_WORKWEAR_INDEX;
 
       const restoredStore: Record<number, WorkwearZoneState> = {};
       const storeCandidate = parsedState.workwearStateByIndex;
@@ -237,6 +244,11 @@ export default function Konfigurator() {
   }, [activeWorkwearIndex, selectedZoneId, zones]);
 
   useEffect(() => {
+    if (activeWorkwearIndex !== DEFAULT_WORKWEAR_INDEX) return;
+    thumbnailStripRef.current?.scrollTo({ left: 0 });
+  }, [activeWorkwearIndex]);
+
+  useEffect(() => {
     const urls = urlsRef.current;
 
     return () => {
@@ -269,6 +281,28 @@ export default function Konfigurator() {
       });
 
     if (added.length > 0) setAssets((prev) => [...added, ...prev]);
+  }
+
+  function removeAsset(assetId: string) {
+    const assetToRemove = assets.find((asset) => asset.id === assetId);
+    if (assetToRemove?.src.startsWith("blob:")) {
+      URL.revokeObjectURL(assetToRemove.src);
+      urlsRef.current = urlsRef.current.filter((url) => url !== assetToRemove.src);
+    }
+
+    setAssets((previous) => previous.filter((asset) => asset.id !== assetId));
+    setZones((previous) =>
+      previous.map((zone) =>
+        zone.assetId !== assetId
+          ? zone
+          : {
+              ...zone,
+              assetId: null,
+              rotation: 0,
+              artworkOffset: { x: 0, y: 0 },
+            },
+      ),
+    );
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -469,10 +503,8 @@ export default function Konfigurator() {
     zoneCounterRef.current = savedState.nextZoneIndex;
   }
 
-  function changeWorkwearImage(direction: -1 | 1) {
-    const nextIndex =
-      (activeWorkwearIndex + direction + WORKWEAR_IMAGES.length) %
-      WORKWEAR_IMAGES.length;
+  function selectWorkwearImage(nextIndex: number) {
+    if (nextIndex === activeWorkwearIndex) return;
 
     saveCurrentWorkwearState(activeWorkwearIndex);
     loadWorkwearState(nextIndex);
@@ -649,19 +681,13 @@ export default function Konfigurator() {
                   Zonen pro Bild: {zones.length} / {MAX_ZONES_PER_WORKWEAR_IMAGE}
                 </p>
 
-                <label className="mt-4 block">
-                  <span className="sr-only">Bilder hochladen</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={(event) => {
-                      handleFiles(event.target.files);
-                      event.currentTarget.value = "";
-                    }}
-                    className="block w-full text-sm text-white/80 file:mr-3 file:rounded-md file:border-0 file:bg-nordwerk-orange file:px-3 file:py-2 file:text-sm file:font-semibold file:text-black hover:file:opacity-90"
-                  />
-                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsUploadModalOpen(true)}
+                  className="mt-4 w-full rounded-md bg-nordwerk-orange px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90"
+                >
+                  + Bilder hochladen
+                </button>
 
                 <div className="mt-4 max-h-105 space-y-3 overflow-auto pr-1">
                   {assets.length === 0 ? (
@@ -674,6 +700,7 @@ export default function Konfigurator() {
                         key={asset.id}
                         asset={asset}
                         onAssign={assignAssetToSelectedZone}
+                        onRemove={removeAsset}
                       />
                     ))
                   )}
@@ -875,31 +902,13 @@ export default function Konfigurator() {
                 <div className="mt-5 rounded-4xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),rgba(0,0,0,0.18)_48%,rgba(0,0,0,0.4)_100%)] p-4 sm:p-8">
                   <div className="mx-auto max-w-155">
                     <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => changeWorkwearImage(-1)}
-                        aria-label="Vorheriges Produktbild"
-                        className="absolute left-1 top-1/2 z-40 -translate-y-1/2 rounded-full border border-white/35 bg-black/55 px-3 py-2 text-lg font-semibold text-white transition hover:bg-black/70 sm:left-2"
-                      >
-                        {"<"}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => changeWorkwearImage(1)}
-                        aria-label="Naechstes Produktbild"
-                        className="absolute right-1 top-1/2 z-40 -translate-y-1/2 rounded-full border border-white/35 bg-black/55 px-3 py-2 text-lg font-semibold text-white transition hover:bg-black/70 sm:right-2"
-                      >
-                        {">"}
-                      </button>
-
                       <div
                         ref={(node) => {
                           previewFrameRef.current = node;
                           setPreviewDropRef(node);
                         }}
                         className={`relative mx-auto w-full overflow-hidden ${viewZoom > 1 ? (viewPanDrag ? "cursor-grabbing" : "cursor-grab") : ""}`}
-                        style={{ aspectRatio: "768 / 1366" }}
+                        style={{ aspectRatio: "768 / 1320" }}
                         onPointerDown={handleViewPanStart}
                         onPointerMove={handleViewPanMove}
                         onPointerUp={handleViewPanEnd}
@@ -911,13 +920,10 @@ export default function Konfigurator() {
                             transform: `translate(${viewPan.x}%, ${viewPan.y}%) scale(${viewZoom})`,
                           }}
                         >
-                          <Image
+                          <img
                             src={activeWorkwearImage}
                             alt="Workwear Shirt"
-                            fill
-                            priority
-                            sizes="(max-width: 1280px) 100vw, 620px"
-                            className="pointer-events-none select-none object-contain"
+                            className="pointer-events-none select-none object-contain absolute inset-0 h-full w-full"
                           />
 
                           {previewOnly
@@ -979,6 +985,36 @@ export default function Konfigurator() {
                               ))}
                         </div>
                       </div>
+
+                      {/* Thumbnail Gallery */}
+                      <div className="flex justify-center">
+                        <div ref={thumbnailStripRef} className="flex w-fit gap-2 overflow-x-auto pb-2">
+                          {WORKWEAR_IMAGES.map((imageUrl, index) => (
+                            <div key={index} className="shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => selectWorkwearImage(index)}
+                              className={`relative overflow-hidden border-2 transition ${
+                                activeWorkwearIndex === index
+                                  ? 'border-nordwerk-orange shadow-lg shadow-nordwerk-orange/40'
+                                  : 'border-white/20 hover:border-white/40'
+                              }`}
+                              style={{ width: '62px', height: '92px', aspectRatio: '768 / 1366' }}
+                              aria-label={`Bild ${index + 1} ${getWorkwearSideLabel(imageUrl)}`}
+                            >
+                              <img
+                                src={imageUrl}
+                                alt={`Thumbnail ${index + 1}`}
+                                className="h-full w-full object-cover"
+                              />
+                            </button>
+                            <p className="mt-1 text-center text-[11px] font-medium text-white/80">
+                              {getWorkwearSideLabel(imageUrl)}
+                            </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -988,6 +1024,13 @@ export default function Konfigurator() {
         </div>
       </main>
       <Footer />
+      <UploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onFilesSelected={(files) => {
+          handleFiles(files);
+        }}
+      />
     </>
   );
 }

@@ -54,10 +54,10 @@ export default function WorkwearZone({
       className={
         'absolute rounded-md border transition ' +
         (isOver || previewIsOver
-          ? 'border-nordwerk-orange bg-nordwerk-orange/20 shadow-[0_0_0_2px_rgba(245,130,32,0.25)]'
+          ? 'border-nordwerk-orange bg-nordwerk-orange/20 shadow-[0_0_0_1px_rgba(0,0,0,0.95),0_0_0_2px_rgba(255,255,255,0.95),0_0_0_4px_rgba(245,130,32,0.55)]'
           : isSelected
-          ? 'border-white bg-white/12 shadow-[0_0_0_2px_rgba(255,255,255,0.12)]'
-          : 'border-white/70 bg-white/8')
+          ? 'border-cyan-300 bg-cyan-300/12 shadow-[0_0_0_1px_rgba(0,0,0,0.95),0_0_0_2px_rgba(255,255,255,0.95),0_0_0_4px_rgba(34,211,238,0.45)]'
+          : 'border-black/85 bg-black/12 shadow-[0_0_0_1px_rgba(0,0,0,0.9),0_0_0_2px_rgba(255,255,255,0.9)]')
       }
     >
       <button
@@ -75,7 +75,7 @@ export default function WorkwearZone({
 
       {!asset ? (
         <div className="absolute inset-0 flex items-center justify-center px-1 text-center">
-          <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-white/90 sm:text-[11px]">
+          <span className="rounded bg-black/75 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white sm:text-[11px]">
             {zone.label}
           </span>
         </div>
