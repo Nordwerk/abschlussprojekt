@@ -814,7 +814,7 @@ export default function Konfigurator() {
                     <input
                       type="range"
                       min={8}
-                      max={45}
+                      max={15}
                       step={0.5}
                       value={selectedZone?.w ?? INITIAL_ZONE_RECT.w}
                       onChange={(event) =>

@@ -10,7 +10,7 @@ export function clampScale(scale: number) {
 }
 
 export function clampZoneWidth(width: number) {
-  return Number(clamp(width, 8, 45).toFixed(1));
+  return Number(clamp(width, 8, 15).toFixed(1));
 }
 
 export function createZone(index: number): ZoneRect {
