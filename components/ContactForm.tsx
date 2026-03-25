@@ -1,6 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { KONFIGURATOR_SUBMISSION_DRAFT_KEY } from '../app/konfigurator/submissionDraft';
+
+type KonfiguratorSubmissionDraft = {
+  activeWorkwearIndex: number;
+  workwearStateByIndex: Record<string, unknown>;
+  snapshots: Array<{
+    imageIndex: number;
+    imageUrl: string;
+    dataUrl: string;
+  }>;
+  createdAt: string;
+};
 
 interface FormData {
   name: string;
@@ -20,6 +32,15 @@ export default function ContactForm() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [hasConfiguratorDraft, setHasConfiguratorDraft] = useState(false);
+
+  useEffect(() => {
+    try {
+      setHasConfiguratorDraft(Boolean(sessionStorage.getItem(KONFIGURATOR_SUBMISSION_DRAFT_KEY)));
+    } catch {
+      setHasConfiguratorDraft(false);
+    }
+  }, []);
 
   // Erfolgs- und Fehlermeldung nach 5 Sekunden automatisch ausblenden
   useEffect(() => {
@@ -45,13 +66,38 @@ export default function ContactForm() {
     setSuccess(false);
 
     try {
-      const res = await fetch('/api/contact', {
+      let draft: KonfiguratorSubmissionDraft | null = null;
+
+      try {
+        const rawDraft = sessionStorage.getItem(KONFIGURATOR_SUBMISSION_DRAFT_KEY);
+        if (rawDraft) {
+          draft = JSON.parse(rawDraft) as KonfiguratorSubmissionDraft;
+        }
+      } catch {
+        draft = null;
+      }
+
+      const endpoint = draft ? '/api/konfigurator/submit' : '/api/contact';
+      const body = draft
+        ? {
+            contact: formData,
+            activeWorkwearIndex: draft.activeWorkwearIndex,
+            workwearStateByIndex: draft.workwearStateByIndex,
+            snapshots: draft.snapshots,
+          }
+        : formData;
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(body),
       });
 
       if (res.ok) {
+        if (draft) {
+          sessionStorage.removeItem(KONFIGURATOR_SUBMISSION_DRAFT_KEY);
+          setHasConfiguratorDraft(false);
+        }
         setSuccess(true);
         setFormData({ name: '', email: '', phone: '', message: '' });
       } else {
@@ -72,6 +118,12 @@ export default function ContactForm() {
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-6 sm:mb-8 md:mb-10">
           Unverbindliche <span className="text-nordwerk-orange">Anfrage</span>
         </h2>
+
+        {hasConfiguratorDraft && (
+          <p className="mb-4 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
+            Ihre Konfiguration wurde uebernommen und wird mit dieser Anfrage gesendet.
+          </p>
+        )}
 
         <form
           onSubmit={handleSubmit}

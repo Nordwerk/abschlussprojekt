@@ -42,7 +42,6 @@ import {
   clamp,
   clampScale,
   clampZoneWidth,
-  createZone,
   getArtworkTransform,
   maxPanForZoom,
 } from "./utils";
@@ -53,6 +52,8 @@ import {
   snapshotWorkwearZoneState,
   type WorkwearZoneState,
 } from "./workwearState";
+import { createConfiguredSnapshots } from "./submission";
+import { KONFIGURATOR_SUBMISSION_DRAFT_KEY } from "./submissionDraft";
 
 const WORKWEAR_STATE_STORAGE_KEY = "konfigurator-workwear-state-v1";
 
@@ -77,7 +78,9 @@ function getWorkwearSideLabel(imageUrl: string): string {
 }
 
 export default function Konfigurator() {
-  const initialWorkwearZoneState = createInitialWorkwearZoneState();
+  const initialWorkwearZoneState = createInitialWorkwearZoneState(
+    DEFAULT_WORKWEAR_INDEX,
+  );
 
   const [assets, setAssets] = useState<Asset[]>([]);
   const [zones, setZones] = useState<ZoneRect[]>(initialWorkwearZoneState.zones);
@@ -94,6 +97,9 @@ export default function Konfigurator() {
   const [viewPanDrag, setViewPanDrag] = useState<PanDragState | null>(null);
   const [zoneDrag, setZoneDrag] = useState<ZoneDragState | null>(null);
   const [artworkDrag, setArtworkDrag] = useState<ArtworkDragState | null>(null);
+  const [isPreparingDraft, setIsPreparingDraft] = useState(false);
+  const [draftPreparationError, setDraftPreparationError] = useState("");
+  const [draftPreparationSuccess, setDraftPreparationSuccess] = useState("");
 
   const zoneCounterRef = useRef(initialWorkwearZoneState.nextZoneIndex);
   const urlsRef = useRef<string[]>([]);
@@ -125,7 +131,6 @@ export default function Konfigurator() {
     ? assetMap.get(selectedZone.assetId)
     : undefined;
   const maxZonesForCurrentImage = getMaxZonesForImage(activeWorkwearIndex);
-  const hasReachedZoneLimit = zones.length >= maxZonesForCurrentImage;
   const activeWorkwearImage = WORKWEAR_IMAGES[activeWorkwearIndex];
 
   useEffect(() => {
@@ -156,7 +161,7 @@ export default function Konfigurator() {
           if (!isObjectRecord(rawEntry)) continue;
 
           const zonesCandidate = rawEntry.zones;
-          if (!Array.isArray(zonesCandidate) || zonesCandidate.length === 0) {
+          if (!Array.isArray(zonesCandidate)) {
             continue;
           }
 
@@ -187,6 +192,7 @@ export default function Konfigurator() {
             zonesWithoutUploadedAssets,
             selectedZoneId,
             nextZoneIndex,
+            index,
           );
         }
       }
@@ -222,6 +228,7 @@ export default function Konfigurator() {
       zones,
       selectedZoneId,
       zoneCounterRef.current,
+      activeWorkwearIndex,
     );
 
     const stateByIndex: Record<string, WorkwearZoneState> = {};
@@ -329,33 +336,6 @@ export default function Konfigurator() {
     if (!zones.some((zone) => zone.id === zoneId)) return;
 
     assignAssetToZone(zoneId, assetId);
-  }
-
-  function getNextAvailableZoneIndex() {
-    const maxZones = getMaxZonesForImage(activeWorkwearIndex);
-    const usedIndexes = new Set(
-      zones
-        .map((zone) => {
-          const match = /^zone-(\d+)$/.exec(zone.id);
-          return match ? Number(match[1]) : null;
-        })
-        .filter((index): index is number => index !== null),
-    );
-
-    for (let index = 1; index <= maxZones; index += 1) {
-      if (!usedIndexes.has(index)) return index;
-    }
-
-    return null;
-  }
-
-  function addZone() {
-    const nextIndex = getNextAvailableZoneIndex();
-    if (nextIndex === null) return;
-
-    const nextZone = createZone(nextIndex);
-    setZones((previous) => [...previous, nextZone]);
-    setSelectedZoneId(nextZone.id);
   }
 
   function assignAssetToSelectedZone(assetId: string) {
@@ -489,7 +469,23 @@ export default function Konfigurator() {
       zones,
       selectedZoneId,
       zoneCounterRef.current,
+      index,
     );
+  }
+
+  function getSubmissionStateByIndex() {
+    const stateByIndex: Record<number, WorkwearZoneState> = {
+      ...workwearStateRef.current,
+    };
+
+    stateByIndex[activeWorkwearIndex] = snapshotWorkwearZoneState(
+      zones,
+      selectedZoneId,
+      zoneCounterRef.current,
+      activeWorkwearIndex,
+    );
+
+    return stateByIndex;
   }
 
   function loadWorkwearState(index: number) {
@@ -521,19 +517,6 @@ export default function Konfigurator() {
       rotation: 0,
       artworkOffset: { x: 0, y: 0 },
     }));
-  }
-
-  function deleteZone(zoneId: string) {
-    if (zones.length <= 1) return;
-
-    const remaining = zones.filter((zone) => zone.id !== zoneId);
-    setZones(remaining);
-
-    if (selectedZoneId === zoneId) setSelectedZoneId(remaining[0].id);
-    if (zoneDrag?.zoneId === zoneId) setZoneDrag(null);
-    if (artworkDrag?.zoneId === zoneId) setArtworkDrag(null);
-
-    delete zoneBoxRefs.current[zoneId];
   }
 
   function handleZoneDragStart(
@@ -572,6 +555,9 @@ export default function Konfigurator() {
     const deltaYPct =
       ((event.clientY - zoneDrag.startPointerY) / bounds.height) * 100;
 
+    const dragHandleHeight = event.currentTarget.getBoundingClientRect().height;
+    const topHandleClearancePct = (dragHandleHeight * 1.15 * 100) / bounds.height;
+
     updateZone(zoneDrag.zoneId, (zone) => {
       const maxX = 100 - zone.w;
       const maxY = 100 - zone.h;
@@ -579,7 +565,7 @@ export default function Konfigurator() {
       return {
         ...zone,
         x: clamp(zoneDrag.startZoneX + deltaXPct, 0, maxX),
-        y: clamp(zoneDrag.startZoneY + deltaYPct, 0, maxY),
+        y: clamp(zoneDrag.startZoneY + deltaYPct, topHandleClearancePct, maxY),
       };
     });
   }
@@ -645,6 +631,41 @@ export default function Konfigurator() {
     setArtworkDrag(null);
   }
 
+  async function prepareDraftAndOpenMainForm() {
+    setIsPreparingDraft(true);
+    setDraftPreparationError("");
+    setDraftPreparationSuccess("");
+
+    try {
+      const stateByIndex = getSubmissionStateByIndex();
+      const snapshots = await createConfiguredSnapshots(stateByIndex, assets);
+
+      if (snapshots.length === 0) {
+        throw new Error("Bitte mindestens ein Logo auf einer Zone platzieren.");
+      }
+
+      sessionStorage.setItem(
+        KONFIGURATOR_SUBMISSION_DRAFT_KEY,
+        JSON.stringify({
+          activeWorkwearIndex,
+          workwearStateByIndex: stateByIndex,
+          snapshots,
+          createdAt: new Date().toISOString(),
+        }),
+      );
+
+      setDraftPreparationSuccess(
+        "Konfiguration vorbereitet. Weiterleitung zum Kontaktformular...",
+      );
+      window.location.href = "/#kontakt";
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unbekannter Fehler";
+      setDraftPreparationError(message);
+    } finally {
+      setIsPreparingDraft(false);
+    }
+  }
+
   return (
     <>
       <Navbar />
@@ -666,18 +687,9 @@ export default function Konfigurator() {
               <aside className="rounded-3xl border border-white/15 bg-black/45 p-4 sm:p-5">
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="text-lg font-semibold text-white">Assets</h2>
-                  <button
-                    type="button"
-                    onClick={addZone}
-                    disabled={hasReachedZoneLimit}
-                    className="rounded-md bg-nordwerk-orange px-3 py-2 text-xs font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Neue Zone
-                  </button>
                 </div>
                 <p className="mt-1 text-sm text-white/65">
-                  Bei Bedarf neue Zone erstellen und dann ein Logo per Drag and
-                  Drop oder Klick zuweisen.
+                  Logo per Drag and Drop oder Klick einer Zone zuweisen.
                 </p>
                 <p className="mt-1 text-xs text-white/50">
                   Zonen pro Bild: {zones.length} / {maxZonesForCurrentImage}
@@ -871,19 +883,6 @@ export default function Konfigurator() {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      if (selectedZone) {
-                        deleteZone(selectedZone.id);
-                      }
-                    }}
-                    disabled={!selectedZone || zones.length <= 1}
-                    className="mt-3 w-full rounded-md border border-red-300/35 bg-red-300/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-red-100 transition hover:bg-red-300/20 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Aktive Zone loeschen
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={() => setPreviewOnly((previous) => !previous)}
                     className="mt-4 w-full rounded-md border border-white/25 bg-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white transition hover:bg-white/15"
                   >
@@ -897,6 +896,36 @@ export default function Konfigurator() {
                   >
                     Ansicht zentrieren
                   </button>
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-white/15 bg-white/5 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+                    Anfrage ueber Hauptformular
+                  </p>
+                  <p className="mt-2 text-xs text-white/65">
+                    Die Konfiguration wird gespeichert und im Kontaktformular auf
+                    der Startseite mitgesendet.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={prepareDraftAndOpenMainForm}
+                    disabled={isPreparingDraft}
+                    className="mt-3 w-full rounded-md bg-nordwerk-orange px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isPreparingDraft
+                      ? "Konfiguration wird vorbereitet..."
+                      : "Zum Kontaktformular"}
+                  </button>
+                  {draftPreparationSuccess ? (
+                    <p className="mt-2 text-xs text-emerald-300">
+                      {draftPreparationSuccess}
+                    </p>
+                  ) : null}
+                  {draftPreparationError ? (
+                    <p className="mt-2 text-xs text-red-300">
+                      {draftPreparationError}
+                    </p>
+                  ) : null}
                 </div>
               </aside>
 
