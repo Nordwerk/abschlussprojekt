@@ -100,6 +100,7 @@ export default function Konfigurator() {
   const [isPreparingDraft, setIsPreparingDraft] = useState(false);
   const [draftPreparationError, setDraftPreparationError] = useState("");
   const [draftPreparationSuccess, setDraftPreparationSuccess] = useState("");
+  const [availableImageIndexes, setAvailableImageIndexes] = useState<Set<number> | null>(null);
 
   const zoneCounterRef = useRef(initialWorkwearZoneState.nextZoneIndex);
   const urlsRef = useRef<string[]>([]);
@@ -139,8 +140,43 @@ export default function Konfigurator() {
       (_, offset) => startIndex + offset,
     );
   }, [activeProduct]);
+  const visibleProductImageIndexes = useMemo(() => {
+    if (!availableImageIndexes) return productImageIndexes;
+
+    return productImageIndexes.filter((index) => availableImageIndexes.has(index));
+  }, [availableImageIndexes, productImageIndexes]);
   const maxZonesForCurrentImage = getMaxZonesForImage(activeWorkwearIndex);
   const activeWorkwearImage = WORKWEAR_IMAGES[activeWorkwearIndex];
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const checks = WORKWEAR_IMAGES.map((imageUrl, index) =>
+      new Promise<number | null>((resolve) => {
+        const img = new window.Image();
+        img.onload = () => resolve(index);
+        img.onerror = () => resolve(null);
+        img.src = imageUrl;
+      }),
+    );
+
+    Promise.all(checks).then((results) => {
+      if (isCancelled) return;
+
+      const nextIndexes = new Set<number>();
+      for (const result of results) {
+        if (typeof result === "number") {
+          nextIndexes.add(result);
+        }
+      }
+
+      setAvailableImageIndexes(nextIndexes);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -503,6 +539,7 @@ export default function Konfigurator() {
 
   function selectWorkwearImage(nextIndex: number) {
     if (nextIndex === activeWorkwearIndex) return;
+    if (availableImageIndexes && !availableImageIndexes.has(nextIndex)) return;
 
     saveCurrentWorkwearState(activeWorkwearIndex);
     loadWorkwearState(nextIndex);
@@ -512,7 +549,16 @@ export default function Konfigurator() {
 
   function startConfiguratorForProduct(product: WorkwearProductId) {
     setHasStartedConfigurator(true);
-    const targetIndex = getWorkwearProductStartIndex(product);
+    const startIndex = getWorkwearProductStartIndex(product);
+    const productIndexes = Array.from(
+      { length: WORKWEAR_VIEWS_PER_PRODUCT },
+      (_, offset) => startIndex + offset,
+    );
+    const targetIndex = availableImageIndexes
+      ? productIndexes.find((index) => availableImageIndexes.has(index)) ?? startIndex
+      : startIndex;
+
+    if (availableImageIndexes && !availableImageIndexes.has(targetIndex)) return;
     selectWorkwearImage(targetIndex);
   }
 
@@ -520,6 +566,58 @@ export default function Konfigurator() {
     setHasStartedConfigurator(false);
     resetView();
   }
+
+  useEffect(() => {
+    if (!availableImageIndexes || availableImageIndexes.has(activeWorkwearIndex)) {
+      return;
+    }
+
+    const switchToIndex = (nextIndex: number) => {
+      if (nextIndex === activeWorkwearIndex) return;
+
+      workwearStateRef.current[activeWorkwearIndex] = snapshotWorkwearZoneState(
+        zones,
+        selectedZoneId,
+        zoneCounterRef.current,
+        activeWorkwearIndex,
+      );
+
+      const savedState = getOrCreateWorkwearZoneState(
+        workwearStateRef.current,
+        nextIndex,
+      );
+      const validSelectedZoneId = getValidSelectedZoneId(
+        savedState.zones,
+        savedState.selectedZoneId,
+      );
+
+      setZones(savedState.zones);
+      setSelectedZoneId(validSelectedZoneId);
+      zoneCounterRef.current = savedState.nextZoneIndex;
+      setActiveWorkwearIndex(nextIndex);
+      setViewZoom(1);
+      setViewPan({ x: 0, y: 0 });
+    };
+
+    const fallbackInProduct = productImageIndexes.find((index) =>
+      availableImageIndexes.has(index),
+    );
+    if (typeof fallbackInProduct === "number") {
+      switchToIndex(fallbackInProduct);
+      return;
+    }
+
+    const [firstAvailable] = availableImageIndexes;
+    if (typeof firstAvailable === "number") {
+      switchToIndex(firstAvailable);
+    }
+  }, [
+    activeWorkwearIndex,
+    availableImageIndexes,
+    productImageIndexes,
+    selectedZoneId,
+    zones,
+  ]);
 
   useEffect(() => {
     const applyHashSelectionState = () => {
@@ -1037,7 +1135,7 @@ export default function Konfigurator() {
                       {/* Thumbnail Gallery */}
                       <div className="flex justify-center">
                         <div ref={thumbnailStripRef} className="flex w-fit gap-2 overflow-x-auto pb-2">
-                          {productImageIndexes.map((index) => {
+                          {visibleProductImageIndexes.map((index) => {
                             const imageUrl = WORKWEAR_IMAGES[index];
 
                             return (

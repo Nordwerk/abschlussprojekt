@@ -1,5 +1,5 @@
 const STORAGE_BASE_URL = (process.env.NEXT_PUBLIC_WORKWEAR_BASE_URL || '').replace(/\/+$/, '');
-const IMAGE_VERSION = process.env.NEXT_PUBLIC_WORKWEAR_IMAGE_VERSION || '';
+const IMAGE_VERSION = process.env.NEXT_PUBLIC_WORKWEAR_IMAGE_VERSION || String(Date.now());
 const WORKWEAR_VIEW_FILENAMES = [
   'vorne.jpg',
   'hinten.jpg',
@@ -13,33 +13,38 @@ export const WORKWEAR_PRODUCTS = [
     label: 'Jacke',
     shortLabel: 'Jacke',
     folder: 'jacke',
+    imageExtension: 'png',
   },
   {
     id: 'hose',
     label: 'Hose',
     shortLabel: 'Hose',
     folder: 'hose',
+    imageExtension: 'jpg',
   },
   {
     id: 'latzhose',
     label: 'Latzhose',
     shortLabel: 'Latzhose',
     folder: 'latzhose',
+    imageExtension: 'jpg',
   },
   {
     id: 'weste',
     label: 'Weste',
     shortLabel: 'Weste',
     folder: 'weste',
+    imageExtension: 'jpg',
   },
 ] as const;
 
 export type WorkwearProductId = (typeof WORKWEAR_PRODUCTS)[number]['id'];
 export const WORKWEAR_VIEWS_PER_PRODUCT = WORKWEAR_VIEW_FILENAMES.length;
 
-const buildImageSequence = (folder: string) =>
+const buildImageSequence = (folder: string, imageExtension: string) =>
   WORKWEAR_VIEW_FILENAMES.map((fileName) => {
-    const relativePath = folder + '/' + fileName;
+    const viewName = fileName.replace(/\.[^.]+$/, '');
+    const relativePath = folder + '/' + viewName + '.' + imageExtension;
     const baseUrl = STORAGE_BASE_URL + '/' + relativePath;
 
     // Uses Supabase Storage exclusively
@@ -47,7 +52,9 @@ const buildImageSequence = (folder: string) =>
   });
 
 export const WORKWEAR_IMAGES: readonly string[] = [
-  ...WORKWEAR_PRODUCTS.flatMap((product) => buildImageSequence(product.folder)),
+  ...WORKWEAR_PRODUCTS.flatMap((product) =>
+    buildImageSequence(product.folder, product.imageExtension),
+  ),
 ];
 export const DEFAULT_WORKWEAR_INDEX = 0;
 

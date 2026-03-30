@@ -37,10 +37,10 @@ export function getWorkwearProductPreviewImage(product: WorkwearProductId): stri
 export function getWorkwearSideLabel(imageUrl: string): string {
   const normalizedUrl = imageUrl.split("?")[0]?.toLowerCase() ?? "";
 
-  if (normalizedUrl.endsWith("/vorne.jpg")) return "Vorne";
-  if (normalizedUrl.endsWith("/links.jpg")) return "Links";
-  if (normalizedUrl.endsWith("/rechts.jpg")) return "Rechts";
-  if (normalizedUrl.endsWith("/hinten.jpg")) return "Hinten";
+  if (/\/vorne\.(jpg|jpeg|png|webp)$/.test(normalizedUrl)) return "Vorne";
+  if (/\/links\.(jpg|jpeg|png|webp)$/.test(normalizedUrl)) return "Links";
+  if (/\/rechts\.(jpg|jpeg|png|webp)$/.test(normalizedUrl)) return "Rechts";
+  if (/\/hinten\.(jpg|jpeg|png|webp)$/.test(normalizedUrl)) return "Hinten";
 
   return "Ansicht";
 }

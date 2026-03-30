@@ -14,15 +14,21 @@ export function clampZoneWidth(width: number) {
 }
 
 export function createZone(index: number): ZoneRect {
-  const offset = (index - 1) * 2;
+  const gap = 2;
   const clampedWidth = clampZoneWidth(INITIAL_ZONE_RECT.w);
   const clampedHeight = Number((clampedWidth * (INITIAL_ZONE_RECT.h / INITIAL_ZONE_RECT.w)).toFixed(1));
+  const zeroBasedIndex = index - 1;
+  const column = zeroBasedIndex % 2;
+  const row = Math.floor(zeroBasedIndex / 2);
+
+  const stepX = clampedWidth + gap;
+  const stepY = clampedHeight + gap;
 
   return {
     id: 'zone-' + index,
     label: 'Zone ' + index,
-    x: clamp(INITIAL_ZONE_RECT.x + offset, 0, 100 - clampedWidth),
-    y: clamp(INITIAL_ZONE_RECT.y + offset, 0, 100 - clampedHeight),
+    x: clamp(INITIAL_ZONE_RECT.x + column * stepX, 0, 100 - clampedWidth),
+    y: clamp(INITIAL_ZONE_RECT.y + row * stepY, 0, 100 - clampedHeight),
     w: clampedWidth,
     h: clampedHeight,
     scale: 1,
