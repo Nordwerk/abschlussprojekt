@@ -17,6 +17,11 @@ export const metadata: Metadata = {
   title: "Nordwerk Workwear – Arbeitskleidung mit System",
   description: "Arbeitskleidung für Handwerk & Industrie. Beratung, Ausstattung und Veredelung aus einer Hand. Professionell, normgerecht, langlebig.",
   keywords: ["Arbeitskleidung", "Workwear", "Berufsbekleidung", "Textildruck", "Stick", "Veredelung", "Handwerk", "Industrie", "Nordwerk"],
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/apple-touch-icon.png",
+  },
   openGraph: {
     title: "Nordwerk Workwear – Arbeitskleidung mit System",
     description: "Arbeitskleidung für Handwerk & Industrie. Beratung, Ausstattung und Veredelung aus einer Hand.",
