@@ -6,7 +6,7 @@ export function clamp(value: number, min: number, max: number) {
 }
 
 export function clampZoneWidth(width: number) {
-  return Number(clamp(width, 8, 15).toFixed(1));
+  return Number(clamp(width, 7.5, 15).toFixed(1));
 }
 
 export function createZone(index: number): ZoneRect {

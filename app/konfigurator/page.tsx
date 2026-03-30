@@ -60,7 +60,7 @@ import {
 import { createConfiguredSnapshots } from "./submission";
 import { KONFIGURATOR_SUBMISSION_DRAFT_KEY } from "./submissionDraft";
 
-const WORKWEAR_STATE_STORAGE_KEY = "konfigurator-workwear-state-v1";
+const WORKWEAR_STATE_STORAGE_KEY = "konfigurator-workwear-state-v2";
 
 type PersistedWorkwearState = {
   activeWorkwearIndex: number;
@@ -780,7 +780,7 @@ export default function Konfigurator() {
                     </button>
                     <input
                       type="range"
-                      min={8}
+                      min={7.5}
                       max={15}
                       step={0.5}
                       value={selectedZone?.w ?? INITIAL_ZONE_RECT.w}

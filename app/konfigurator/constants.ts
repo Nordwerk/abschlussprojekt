@@ -73,6 +73,6 @@ export function getMaxZonesForImage(imageIndex: number): number {
 export const INITIAL_ZONE_RECT = {
   x: 56,
   y: 29,
-  w: 18,
-  h: 10,
+  w: 11.3,
+  h: 6.3,
 };
