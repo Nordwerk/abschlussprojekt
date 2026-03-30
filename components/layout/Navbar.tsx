@@ -8,6 +8,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const isKonfiguratorRoute = pathname?.startsWith('/konfigurator');
 
   const scrollTo = (id: string) => {
     if (pathname !== '/') {
@@ -43,7 +44,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-black/10 backdrop-blur-[2px] border-b border-white/5">
+    <nav className={`${isKonfiguratorRoute ? 'relative' : 'fixed top-0 left-0'} w-full z-50 bg-black/10 backdrop-blur-[2px] border-b border-white/5`}>
       <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
         
         <button onClick={goHome} className="cursor-pointer">
