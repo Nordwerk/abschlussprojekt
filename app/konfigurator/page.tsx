@@ -39,8 +39,8 @@ import {
 import type {
   Asset,
   ZoneDragState,
-  ZoneResizeState,
   ZoneRect,
+  PrintMaterial,
 } from "./types";
 import {
   clamp,
@@ -90,12 +90,12 @@ export default function Konfigurator() {
   );
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [zoneDrag, setZoneDrag] = useState<ZoneDragState | null>(null);
-  const [zoneResize, setZoneResize] = useState<ZoneResizeState | null>(null);
   const [hasStartedConfigurator, setHasStartedConfigurator] = useState(false);
   const [isPreparingDraft, setIsPreparingDraft] = useState(false);
   const [draftPreparationError, setDraftPreparationError] = useState("");
   const [draftPreparationSuccess, setDraftPreparationSuccess] = useState("");
   const [availableImageIndexes, setAvailableImageIndexes] = useState<Set<number> | null>(null);
+  const [printMaterial, setPrintMaterial] = useState<PrintMaterial>("druck");
 
   const zoneCounterRef = useRef(initialWorkwearZoneState.nextZoneIndex);
   const urlsRef = useRef<string[]>([]);
@@ -398,13 +398,6 @@ export default function Konfigurator() {
     }));
   }
 
-  function rotateZoneById(zoneId: string, degrees: number) {
-    updateZone(zoneId, (zone) => ({
-      ...zone,
-      rotation: (zone.rotation + degrees + 360) % 360,
-    }));
-  }
-
   function updateZoneSize(nextWidth: number) {
     updateSelectedZone((zone) => {
       const width = clampZoneWidth(nextWidth);
@@ -631,156 +624,6 @@ export default function Konfigurator() {
     setZoneDrag(null);
   }
 
-  function handleZoneResizeStart(
-    event: ReactPointerEvent<HTMLDivElement>,
-    zoneId: string,
-    corner: 'tl' | 'tr' | 'bl' | 'br',
-  ) {
-    const zone = zones.find((entry) => entry.id === zoneId);
-    if (!zone) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setSelectedZoneId(zoneId);
-
-    setZoneResize({
-      zoneId,
-      pointerId: event.pointerId,
-      startPointerX: event.clientX,
-      startPointerY: event.clientY,
-      startZoneW: zone.w,
-      startZoneH: zone.h,
-      startZoneX: zone.x,
-      startZoneY: zone.y,
-      corner,
-    });
-  }
-
-  function handleZoneResizeMove(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!zoneResize || zoneResize.pointerId !== event.pointerId) return;
-
-    const frame = previewFrameRef.current;
-    if (!frame) return;
-
-    const bounds = frame.getBoundingClientRect();
-    if (bounds.width === 0 || bounds.height === 0) return;
-
-    const deltaXPct =
-      ((event.clientX - zoneResize.startPointerX) / bounds.width) * 100;
-    const deltaYPct =
-      ((event.clientY - zoneResize.startPointerY) / bounds.height) * 100;
-
-    updateZone(zoneResize.zoneId, (zone) => {
-      let newX = zone.x;
-      let newY = zone.y;
-      let newW = zone.w;
-      let newH = zone.h;
-
-      const { corner } = zoneResize;
-      const aspectRatio = zoneResize.startZoneH / zoneResize.startZoneW;
-
-      // For diagonal corners, we need to determine which direction changed more
-      // and use that to drive the aspect-ratio-preserving resize
-
-      if (corner === 'br') {
-        // Bottom-right: both X and Y grow together
-        const potentialH = zoneResize.startZoneH + deltaYPct;
-        const potentialW = zoneResize.startZoneW + deltaXPct;
-
-        if (Math.abs(deltaYPct) > Math.abs(deltaXPct)) {
-          newH = potentialH;
-          newW = newH / aspectRatio;
-        } else {
-          newW = potentialW;
-          newH = newW * aspectRatio;
-        }
-
-        newX = zoneResize.startZoneX;
-        newY = zoneResize.startZoneY;
-      }
-
-      if (corner === 'bl') {
-        // Bottom-left: Y grows, X shrinks
-        const potentialH = zoneResize.startZoneH + deltaYPct;
-        const potentialW = zoneResize.startZoneW - deltaXPct;
-
-        if (Math.abs(deltaYPct) > Math.abs(deltaXPct)) {
-          newH = potentialH;
-          newW = newH / aspectRatio;
-        } else {
-          newW = potentialW;
-          newH = newW * aspectRatio;
-        }
-
-        newX = zoneResize.startZoneX + (zoneResize.startZoneW - newW);
-        newY = zoneResize.startZoneY;
-      }
-
-      if (corner === 'tr') {
-        // Top-right: Y shrinks, X grows
-        const potentialH = zoneResize.startZoneH - deltaYPct;
-        const potentialW = zoneResize.startZoneW + deltaXPct;
-
-        if (Math.abs(deltaYPct) > Math.abs(deltaXPct)) {
-          newH = potentialH;
-          newW = newH / aspectRatio;
-        } else {
-          newW = potentialW;
-          newH = newW * aspectRatio;
-        }
-
-        newX = zoneResize.startZoneX;
-        newY = zoneResize.startZoneY + (zoneResize.startZoneH - newH);
-      }
-
-      if (corner === 'tl') {
-        // Top-left: both X and Y shrink
-        const potentialH = zoneResize.startZoneH - deltaYPct;
-        const potentialW = zoneResize.startZoneW - deltaXPct;
-
-        if (Math.abs(deltaYPct) > Math.abs(deltaXPct)) {
-          newH = potentialH;
-          newW = newH / aspectRatio;
-        } else {
-          newW = potentialW;
-          newH = newW * aspectRatio;
-        }
-
-        newX = zoneResize.startZoneX + (zoneResize.startZoneW - newW);
-        newY = zoneResize.startZoneY + (zoneResize.startZoneH - newH);
-      }
-
-      // Apply width clamp (same logic as updateZoneSize)
-      newW = clampZoneWidth(newW);
-      newH = Number((newW * (zoneResize.startZoneH / zoneResize.startZoneW)).toFixed(1));
-
-      // Clamp positions to bounds
-      newX = clamp(newX, 0, 100 - newW);
-      newY = clamp(newY, 0, 100 - newH);
-
-      // Prüfe ob die neue Größe/Position mit einer Antizone überlappt
-      if (isZoneOverlappingForbiddenZone(newX, newY, newW, newH, activeWorkwearIndex)) {
-        // Wenn ja, behalte die alte Größe/Position
-        return zone;
-      }
-
-      return {
-        ...zone,
-        x: Number(newX.toFixed(1)),
-        y: Number(newY.toFixed(1)),
-        w: Number(newW.toFixed(1)),
-        h: Number(newH.toFixed(1)),
-      };
-    });
-  }
-
-  function handleZoneResizeEnd(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!zoneResize || zoneResize.pointerId !== event.pointerId) return;
-    event.currentTarget.releasePointerCapture(event.pointerId);
-    setZoneResize(null);
-  }
-
   async function prepareDraftAndOpenMainForm() {
     setIsPreparingDraft(true);
     setDraftPreparationError("");
@@ -800,6 +643,7 @@ export default function Konfigurator() {
           activeWorkwearIndex,
           workwearStateByIndex: stateByIndex,
           snapshots,
+          printMaterial,
           createdAt: new Date().toISOString(),
         }),
       );
@@ -987,6 +831,36 @@ export default function Konfigurator() {
 
                 <div className="mt-6 rounded-2xl border border-white/15 bg-white/5 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+                    Druckmaterial
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="printMaterial"
+                        value="druck"
+                        checked={printMaterial === "druck"}
+                        onChange={(e) => setPrintMaterial(e.target.value as PrintMaterial)}
+                        className="cursor-pointer"
+                      />
+                      <span className="text-sm text-white">Druck</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="printMaterial"
+                        value="strick"
+                        checked={printMaterial === "strick"}
+                        onChange={(e) => setPrintMaterial(e.target.value as PrintMaterial)}
+                        className="cursor-pointer"
+                      />
+                      <span className="text-sm text-white">Strick</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-white/15 bg-white/5 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
                     Anfrage ueber Hauptformular
                   </p>
                   <p className="mt-2 text-xs text-white/65">
@@ -1087,14 +961,11 @@ export default function Konfigurator() {
                                   onZoneDragStart={handleZoneDragStart}
                                   onZoneDragMove={handleZoneDragMove}
                                   onZoneDragEnd={handleZoneDragEnd}
-                                  onZoneResizeStart={handleZoneResizeStart}
-                                  onZoneResizeMove={handleZoneResizeMove}
-                                  onZoneResizeEnd={handleZoneResizeEnd}
                                   onClearAsset={clearZone}
                                   onRotate={(degrees) => rotateZoneById(zone.id, degrees)}
                                 />
                               ))}
-                          {/* Antizonen anzeigen, wenn eine Zone bewegt wird */}
+                          {/* Antizonen anzeigen - nur beim Bewegen */}
                           {zoneDrag && getForbiddenZonesForImage(activeWorkwearIndex).map((forbiddenZone, index) => (
                             <div
                               key={`forbidden-${index}`}
