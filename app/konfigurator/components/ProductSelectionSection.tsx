@@ -37,7 +37,11 @@ export default function ProductSelectionSection({
               return (
                 <article
                   key={product.id}
-                  className="rounded-2xl border border-white/20 bg-white/5 p-4"
+                  className="
+                    rounded-2xl border border-white/20 bg-white/10 p-4
+                    transition-all duration-200
+                    hover:border-white/40 hover:bg-white/[0.12] hover:shadow-xl hover:shadow-black/20
+                  "
                 >
                   <div className="rounded-xl border border-white/15 bg-black/30 p-3">
                     <div
@@ -57,7 +61,7 @@ export default function ProductSelectionSection({
                   <button
                     type="button"
                     onClick={() => onStartConfigurator(product.id)}
-                    className="mt-4 w-full rounded-md bg-nordwerk-orange px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90"
+                    className="mt-4 w-full rounded-md bg-nordwerk-orange px-4 py-2 text-sm font-semibold text-black hover:scale-105 hover:text-white transition"
                   >
                     {productLabel} konfigurieren
                   </button>
