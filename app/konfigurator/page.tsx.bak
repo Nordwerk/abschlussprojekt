@@ -1,0 +1,1140 @@
+"use client";
+
+/* eslint-disable @next/next/no-img-element */
+
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+
+import Navbar from "../../components/layout/Navbar";
+import Footer from "../../components/layout/Footer";
+import DraggableAssetCard from "./components/DraggableAssetCard";
+import ProductSelectionSection from "./components/ProductSelectionSection";
+import WorkwearZone from "./components/WorkwearZone";
+import UploadModal from "./components/UploadModal";
+import {
+  DEFAULT_WORKWEAR_INDEX,
+  getMaxZonesForImage,
+  WORKWEAR_VIEWS_PER_PRODUCT,
+  WORKWEAR_IMAGES,
+  INITIAL_ZONE_RECT,
+  PREVIEW_DROP_ID,
+  type WorkwearProductId,
+  ZONE_DROP_PREFIX,
+  isZoneOverlappingForbiddenZone,
+  getForbiddenZonesForImage,
+} from "./constants";
+import type {
+  Asset,
+  ZoneDragState,
+  ZoneResizeState,
+  ZoneRect,
+  PrintMaterial,
+} from "./types";
+import {
+  clamp,
+  clampZoneWidth,
+  getArtworkTransform,
+} from "./utils";
+import {
+  getWorkwearProductByIndex,
+  getWorkwearProductStartIndex,
+  getWorkwearSideLabel,
+  getWorkwearProductShortLabel,
+} from "./productHelpers";
+import {
+  createInitialWorkwearZoneState,
+  getOrCreateWorkwearZoneState,
+  getValidSelectedZoneId,
+  snapshotWorkwearZoneState,
+  type WorkwearZoneState,
+} from "./workwearState";
+import { createConfiguredSnapshots } from "./submission";
+import { KONFIGURATOR_SUBMISSION_DRAFT_KEY } from "./submissionDraft";
+
+const WORKWEAR_STATE_STORAGE_KEY = "konfigurator-workwear-state-v2";
+
+type PersistedWorkwearState = {
+  activeWorkwearIndex: number;
+  workwearStateByIndex: Record<string, WorkwearZoneState>;
+};
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+export default function Konfigurator() {
+  const initialWorkwearZoneState = createInitialWorkwearZoneState(
+    DEFAULT_WORKWEAR_INDEX,
+  );
+
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [zones, setZones] = useState<ZoneRect[]>(initialWorkwearZoneState.zones);
+  const [selectedZoneId, setSelectedZoneId] = useState(
+    initialWorkwearZoneState.selectedZoneId,
+  );
+  const [previewOnly, setPreviewOnly] = useState(false);
+  const [activeWorkwearIndex, setActiveWorkwearIndex] = useState(
+    DEFAULT_WORKWEAR_INDEX,
+  );
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [zoneDrag, setZoneDrag] = useState<ZoneDragState | null>(null);
+  const [zoneResize, setZoneResize] = useState<ZoneResizeState | null>(null);
+  const [hasStartedConfigurator, setHasStartedConfigurator] = useState(false);
+  const [isPreparingDraft, setIsPreparingDraft] = useState(false);
+  const [draftPreparationError, setDraftPreparationError] = useState("");
+  const [draftPreparationSuccess, setDraftPreparationSuccess] = useState("");
+  const [availableImageIndexes, setAvailableImageIndexes] = useState<Set<number> | null>(null);
+  const [printMaterial, setPrintMaterial] = useState<PrintMaterial>("druck");
+
+  const zoneCounterRef = useRef(initialWorkwearZoneState.nextZoneIndex);
+  const urlsRef = useRef<string[]>([]);
+  const workwearStateRef = useRef<Record<number, WorkwearZoneState>>({
+    [DEFAULT_WORKWEAR_INDEX]: initialWorkwearZoneState,
+  });
+  const hasHydratedFromLocalStorageRef = useRef(false);
+  const previewFrameRef = useRef<HTMLDivElement | null>(null);
+  const thumbnailStripRef = useRef<HTMLDivElement | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
+  const { isOver: isOverPreview, setNodeRef: setPreviewDropRef } = useDroppable(
+    {
+      id: PREVIEW_DROP_ID,
+    },
+  );
+
+  const assetMap = useMemo(
+    () => new Map<string, Asset>(assets.map((a) => [a.id, a])),
+    [assets],
+  );
+
+  const selectedZone =
+    zones.find((zone) => zone.id === selectedZoneId) ?? zones[0] ?? null;
+  const selectedAsset = selectedZone?.assetId
+    ? assetMap.get(selectedZone.assetId)
+    : undefined;
+  const activeProduct = getWorkwearProductByIndex(activeWorkwearIndex);
+  const productImageIndexes = useMemo(() => {
+    const startIndex = getWorkwearProductStartIndex(activeProduct);
+
+    return Array.from(
+      { length: WORKWEAR_VIEWS_PER_PRODUCT },
+      (_, offset) => startIndex + offset,
+    );
+  }, [activeProduct]);
+  const visibleProductImageIndexes = useMemo(() => {
+    if (!availableImageIndexes) return productImageIndexes;
+
+    return productImageIndexes.filter((index) => availableImageIndexes.has(index));
+  }, [availableImageIndexes, productImageIndexes]);
+  const maxZonesForCurrentImage = getMaxZonesForImage(activeWorkwearIndex);
+  const activeWorkwearImage = WORKWEAR_IMAGES[activeWorkwearIndex];
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const checks = WORKWEAR_IMAGES.map((imageUrl, index) =>
+      new Promise<number | null>((resolve) => {
+        const img = new window.Image();
+        img.onload = () => resolve(index);
+        img.onerror = () => resolve(null);
+        img.src = imageUrl;
+      }),
+    );
+
+    Promise.all(checks).then((results) => {
+      if (isCancelled) return;
+
+      const nextIndexes = new Set<number>();
+      for (const result of results) {
+        if (typeof result === "number") {
+          nextIndexes.add(result);
+        }
+      }
+
+      setAvailableImageIndexes(nextIndexes);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      const rawState = window.localStorage.getItem(WORKWEAR_STATE_STORAGE_KEY);
+      if (!rawState) return;
+
+      const parsedState: unknown = JSON.parse(rawState);
+      if (!isObjectRecord(parsedState)) return;
+
+      // Always start on jacket after reload; we only restore zone data per image.
+      const activeIndex = DEFAULT_WORKWEAR_INDEX;
+
+      const restoredStore: Record<number, WorkwearZoneState> = {};
+      const storeCandidate = parsedState.workwearStateByIndex;
+
+      if (isObjectRecord(storeCandidate)) {
+        for (const [indexKey, rawEntry] of Object.entries(storeCandidate)) {
+          const index = Number(indexKey);
+          if (
+            !Number.isInteger(index) ||
+            index < 0 ||
+            index >= WORKWEAR_IMAGES.length
+          ) {
+            continue;
+          }
+
+          if (!isObjectRecord(rawEntry)) continue;
+
+          const zonesCandidate = rawEntry.zones;
+          if (!Array.isArray(zonesCandidate)) {
+            continue;
+          }
+
+          const zones = zonesCandidate as ZoneRect[];
+          const selectedZoneCandidate = rawEntry.selectedZoneId;
+          const selectedZoneId =
+            typeof selectedZoneCandidate === "string"
+              ? selectedZoneCandidate
+              : zones[0].id;
+
+          const nextZoneIndexCandidate = rawEntry.nextZoneIndex;
+          const nextZoneIndex =
+            typeof nextZoneIndexCandidate === "number" &&
+            Number.isFinite(nextZoneIndexCandidate) &&
+            nextZoneIndexCandidate > 0
+              ? Math.floor(nextZoneIndexCandidate)
+              : 2;
+
+          // Uploaded logos are object URLs and do not survive reloads.
+          const zonesWithoutUploadedAssets = zones.map((zone) => ({
+            ...zone,
+            assetId: null,
+            rotation: 0,
+            artworkOffset: { x: 0, y: 0 },
+          }));
+
+          restoredStore[index] = snapshotWorkwearZoneState(
+            zonesWithoutUploadedAssets,
+            selectedZoneId,
+            nextZoneIndex,
+            index,
+          );
+        }
+      }
+
+      if (Object.keys(restoredStore).length > 0) {
+        workwearStateRef.current = restoredStore;
+      }
+
+      const restoredState = getOrCreateWorkwearZoneState(
+        workwearStateRef.current,
+        activeIndex,
+      );
+      const validSelectedZoneId = getValidSelectedZoneId(
+        restoredState.zones,
+        restoredState.selectedZoneId,
+      );
+
+      setActiveWorkwearIndex(activeIndex);
+      setZones(restoredState.zones);
+      setSelectedZoneId(validSelectedZoneId);
+      zoneCounterRef.current = restoredState.nextZoneIndex;
+    } catch {
+      // Keep defaults if stored JSON is invalid.
+    } finally {
+      hasHydratedFromLocalStorageRef.current = true;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydratedFromLocalStorageRef.current) return;
+
+    workwearStateRef.current[activeWorkwearIndex] = snapshotWorkwearZoneState(
+      zones,
+      selectedZoneId,
+      zoneCounterRef.current,
+      activeWorkwearIndex,
+    );
+
+    const stateByIndex: Record<string, WorkwearZoneState> = {};
+    for (const [index, state] of Object.entries(workwearStateRef.current)) {
+      stateByIndex[index] = state;
+    }
+
+    const payload: PersistedWorkwearState = {
+      activeWorkwearIndex,
+      workwearStateByIndex: stateByIndex,
+    };
+
+    try {
+      window.localStorage.setItem(
+        WORKWEAR_STATE_STORAGE_KEY,
+        JSON.stringify(payload),
+      );
+    } catch {
+      // Ignore write failures in private mode or quota limits.
+    }
+  }, [activeWorkwearIndex, selectedZoneId, zones]);
+
+  useEffect(() => {
+    thumbnailStripRef.current?.scrollTo({ left: 0 });
+  }, [activeProduct]);
+
+  useEffect(() => {
+    const urls = urlsRef.current;
+
+    return () => {
+      for (const url of urls) {
+        URL.revokeObjectURL(url);
+      }
+    };
+  }, []);
+
+  function updateZone(zoneId: string, updater: (zone: ZoneRect) => ZoneRect) {
+    setZones((previous) =>
+      previous.map((zone) => (zone.id === zoneId ? updater(zone) : zone)),
+    );
+  }
+
+  function updateSelectedZone(updater: (zone: ZoneRect) => ZoneRect) {
+    if (!selectedZone) return;
+    updateZone(selectedZone.id, updater);
+  }
+
+  function handleFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+
+    const added = Array.from(files)
+      .filter((file) => file.type.startsWith("image/"))
+      .map((file) => {
+        const src = URL.createObjectURL(file);
+        urlsRef.current.push(src);
+        return { id: crypto.randomUUID(), name: file.name, src };
+      });
+
+    if (added.length > 0) setAssets((prev) => [...added, ...prev]);
+  }
+
+  function removeAsset(assetId: string) {
+    const assetToRemove = assets.find((asset) => asset.id === assetId);
+    if (assetToRemove?.src.startsWith("blob:")) {
+      URL.revokeObjectURL(assetToRemove.src);
+      urlsRef.current = urlsRef.current.filter((url) => url !== assetToRemove.src);
+    }
+
+    setAssets((previous) => previous.filter((asset) => asset.id !== assetId));
+    setZones((previous) =>
+      previous.map((zone) =>
+        zone.assetId !== assetId
+          ? zone
+          : {
+              ...zone,
+              assetId: null,
+              rotation: 0,
+              artworkOffset: { x: 0, y: 0 },
+            },
+      ),
+    );
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const over = event.over;
+    if (!over) return;
+
+    const activeId = String(event.active.id);
+    if (!activeId.startsWith("asset:")) return;
+
+    const overId = String(over.id);
+    const assetId = activeId.slice("asset:".length);
+
+    if (overId === PREVIEW_DROP_ID) {
+      if (selectedZone) {
+        assignAssetToZone(selectedZone.id, assetId);
+      }
+      return;
+    }
+
+    if (!overId.startsWith(ZONE_DROP_PREFIX)) return;
+
+    const zoneId = overId.slice(ZONE_DROP_PREFIX.length);
+    if (!zones.some((zone) => zone.id === zoneId)) return;
+
+    assignAssetToZone(zoneId, assetId);
+  }
+
+  function assignAssetToSelectedZone(assetId: string) {
+    if (!selectedZone) return;
+    assignAssetToZone(selectedZone.id, assetId);
+  }
+
+  function assignAssetToZone(zoneId: string, assetId: string) {
+    setSelectedZoneId(zoneId);
+    updateZone(zoneId, (zone) => ({
+      ...zone,
+      assetId,
+      rotation: 0,
+      artworkOffset: { x: 0, y: 0 },
+    }));
+  }
+
+  function rotateArtwork(degrees: number) {
+    updateSelectedZone((zone) => ({
+      ...zone,
+      rotation: (zone.rotation + degrees + 360) % 360,
+    }));
+  }
+
+  function updateZoneSize(nextWidth: number) {
+    updateSelectedZone((zone) => {
+      const width = clampZoneWidth(nextWidth);
+      const height = Number((width * (zone.h / zone.w)).toFixed(1));
+
+      return {
+        ...zone,
+        w: width,
+        h: height,
+        x: clamp(zone.x, 0, 100 - width),
+        y: clamp(zone.y, 0, 100 - height),
+      };
+    });
+  }
+
+  function saveCurrentWorkwearState(index: number) {
+    workwearStateRef.current[index] = snapshotWorkwearZoneState(
+      zones,
+      selectedZoneId,
+      zoneCounterRef.current,
+      index,
+    );
+  }
+
+  function getSubmissionStateByIndex() {
+    const stateByIndex: Record<number, WorkwearZoneState> = {
+      ...workwearStateRef.current,
+    };
+
+    stateByIndex[activeWorkwearIndex] = snapshotWorkwearZoneState(
+      zones,
+      selectedZoneId,
+      zoneCounterRef.current,
+      activeWorkwearIndex,
+    );
+
+    return stateByIndex;
+  }
+
+  function loadWorkwearState(index: number) {
+    const savedState = getOrCreateWorkwearZoneState(workwearStateRef.current, index);
+
+    const validSelectedZoneId = getValidSelectedZoneId(
+      savedState.zones,
+      savedState.selectedZoneId,
+    );
+
+    setZones(savedState.zones);
+    setSelectedZoneId(validSelectedZoneId);
+    zoneCounterRef.current = savedState.nextZoneIndex;
+  }
+
+  function selectWorkwearImage(nextIndex: number) {
+    if (nextIndex === activeWorkwearIndex) return;
+    if (availableImageIndexes && !availableImageIndexes.has(nextIndex)) return;
+
+    saveCurrentWorkwearState(activeWorkwearIndex);
+    loadWorkwearState(nextIndex);
+    setActiveWorkwearIndex(nextIndex);
+  }
+
+  function startConfiguratorForProduct(product: WorkwearProductId) {
+    setHasStartedConfigurator(true);
+    const startIndex = getWorkwearProductStartIndex(product);
+    const productIndexes = Array.from(
+      { length: WORKWEAR_VIEWS_PER_PRODUCT },
+      (_, offset) => startIndex + offset,
+    );
+    const targetIndex = availableImageIndexes
+      ? productIndexes.find((index) => availableImageIndexes.has(index)) ?? startIndex
+      : startIndex;
+
+    if (availableImageIndexes && !availableImageIndexes.has(targetIndex)) return;
+    selectWorkwearImage(targetIndex);
+  }
+
+  function backToProductSelection() {
+    setHasStartedConfigurator(false);
+  }
+
+  useEffect(() => {
+    if (!availableImageIndexes || availableImageIndexes.has(activeWorkwearIndex)) {
+      return;
+    }
+
+    const switchToIndex = (nextIndex: number) => {
+      if (nextIndex === activeWorkwearIndex) return;
+
+      workwearStateRef.current[activeWorkwearIndex] = snapshotWorkwearZoneState(
+        zones,
+        selectedZoneId,
+        zoneCounterRef.current,
+        activeWorkwearIndex,
+      );
+
+      const savedState = getOrCreateWorkwearZoneState(
+        workwearStateRef.current,
+        nextIndex,
+      );
+      const validSelectedZoneId = getValidSelectedZoneId(
+        savedState.zones,
+        savedState.selectedZoneId,
+      );
+
+      setZones(savedState.zones);
+      setSelectedZoneId(validSelectedZoneId);
+      zoneCounterRef.current = savedState.nextZoneIndex;
+      setActiveWorkwearIndex(nextIndex);
+    };
+
+    const fallbackInProduct = productImageIndexes.find((index) =>
+      availableImageIndexes.has(index),
+    );
+    if (typeof fallbackInProduct === "number") {
+      switchToIndex(fallbackInProduct);
+      return;
+    }
+
+    const [firstAvailable] = availableImageIndexes;
+    if (typeof firstAvailable === "number") {
+      switchToIndex(firstAvailable);
+    }
+  }, [
+    activeWorkwearIndex,
+    availableImageIndexes,
+    productImageIndexes,
+    selectedZoneId,
+    zones,
+  ]);
+
+  useEffect(() => {
+    const applyHashSelectionState = () => {
+      if (window.location.hash === "#auswahl") {
+        setHasStartedConfigurator(false);
+      }
+    };
+
+    const handleSelectionEvent = () => {
+      setHasStartedConfigurator(false);
+    };
+
+    applyHashSelectionState();
+    window.addEventListener("hashchange", applyHashSelectionState);
+    window.addEventListener("konfigurator:show-selection", handleSelectionEvent);
+
+    return () => {
+      window.removeEventListener("hashchange", applyHashSelectionState);
+      window.removeEventListener(
+        "konfigurator:show-selection",
+        handleSelectionEvent,
+      );
+    };
+  }, []);
+
+  function clearZone(zoneId: string) {
+    updateZone(zoneId, (zone) => ({
+      ...zone,
+      assetId: null,
+      rotation: 0,
+      artworkOffset: { x: 0, y: 0 },
+    }));
+  }
+
+  function handleZoneDragStart(
+    event: ReactPointerEvent<HTMLDivElement>,
+    zoneId: string,
+  ) {
+    const zone = zones.find((entry) => entry.id === zoneId);
+    if (!zone) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSelectedZoneId(zoneId);
+
+    setZoneDrag({
+      zoneId,
+      pointerId: event.pointerId,
+      startPointerX: event.clientX,
+      startPointerY: event.clientY,
+      startZoneX: zone.x,
+      startZoneY: zone.y,
+    });
+  }
+
+  function handleZoneDragMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!zoneDrag || zoneDrag.pointerId !== event.pointerId) return;
+
+    const frame = previewFrameRef.current;
+    if (!frame) return;
+
+    const bounds = frame.getBoundingClientRect();
+    if (bounds.width === 0 || bounds.height === 0) return;
+
+    const deltaXPct =
+      ((event.clientX - zoneDrag.startPointerX) / bounds.width) * 100;
+    const deltaYPct =
+      ((event.clientY - zoneDrag.startPointerY) / bounds.height) * 100;
+
+    updateZone(zoneDrag.zoneId, (zone) => {
+      const maxX = 100 - zone.w;
+      const maxY = 100 - zone.h;
+
+      const newX = clamp(zoneDrag.startZoneX + deltaXPct, 0, maxX);
+      const newY = clamp(zoneDrag.startZoneY + deltaYPct, 0, maxY);
+
+      // Prüfe ob die neue Position mit einer Antizone überlappt
+      if (isZoneOverlappingForbiddenZone(newX, newY, zone.w, zone.h, activeWorkwearIndex)) {
+        // Wenn ja, behalte die alte Position
+        return zone;
+      }
+
+      return {
+        ...zone,
+        x: newX,
+        y: newY,
+      };
+    });
+  }
+
+  function handleZoneDragEnd(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!zoneDrag || zoneDrag.pointerId !== event.pointerId) return;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    setZoneDrag(null);
+  }
+
+  function handleZoneResizeStart(
+    event: ReactPointerEvent<HTMLDivElement>,
+    zoneId: string,
+    corner: 'tl' | 'tr' | 'bl' | 'br',
+  ) {
+    const zone = zones.find((entry) => entry.id === zoneId);
+    if (!zone) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSelectedZoneId(zoneId);
+
+    setZoneResize({
+      zoneId,
+      pointerId: event.pointerId,
+      corner,
+      startPointerX: event.clientX,
+      startPointerY: event.clientY,
+      startZoneX: zone.x,
+      startZoneY: zone.y,
+      startZoneW: zone.w,
+      startZoneH: zone.h,
+    });
+  }
+
+  function handleZoneResizeMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!zoneResize || zoneResize.pointerId !== event.pointerId) return;
+
+    const frame = previewFrameRef.current;
+    if (!frame) return;
+
+    const bounds = frame.getBoundingClientRect();
+    if (bounds.width === 0 || bounds.height === 0) return;
+
+    const deltaXPct =
+      ((event.clientX - zoneResize.startPointerX) / bounds.width) * 100;
+    const deltaYPct =
+      ((event.clientY - zoneResize.startPointerY) / bounds.height) * 100;
+
+    updateZone(zoneResize.zoneId, (zone) => {
+      let newX = zoneResize.startZoneX;
+      let newY = zoneResize.startZoneY;
+      let newW = zoneResize.startZoneW;
+      let newH = zoneResize.startZoneH;
+
+      // Berechne neue Dimensionen basierend auf Corner
+      if (zoneResize.corner === 'tl') {
+        newX = zoneResize.startZoneX + deltaXPct;
+        newY = zoneResize.startZoneY + deltaYPct;
+        newW = zoneResize.startZoneW - deltaXPct;
+        newH = zoneResize.startZoneH - deltaYPct;
+      } else if (zoneResize.corner === 'tr') {
+        newY = zoneResize.startZoneY + deltaYPct;
+        newW = zoneResize.startZoneW + deltaXPct;
+        newH = zoneResize.startZoneH - deltaYPct;
+      } else if (zoneResize.corner === 'bl') {
+        newX = zoneResize.startZoneX + deltaXPct;
+        newW = zoneResize.startZoneW - deltaXPct;
+        newH = zoneResize.startZoneH + deltaYPct;
+      } else if (zoneResize.corner === 'br') {
+        newW = zoneResize.startZoneW + deltaXPct;
+        newH = zoneResize.startZoneH + deltaYPct;
+      }
+
+      // Wende Constraints an: Breite 7.5-15, Höhe proportional dazu halten
+      const aspectRatio = zoneResize.startZoneH / zoneResize.startZoneW;
+      const minW = 7.5;
+      const maxW = 15;
+      
+      newW = clamp(newW, minW, maxW);
+      newH = clamp(newW * aspectRatio, minW * aspectRatio, maxW * aspectRatio);
+      
+      // Stelle sicher, dass die Zone nicht außerhalb der Grenzen geht
+      newX = clamp(newX, 0, 100 - newW);
+      newY = clamp(newY, 0, 100 - newH);
+
+      return {
+        ...zone,
+        x: newX,
+        y: newY,
+        w: Number(newW.toFixed(1)),
+        h: Number(newH.toFixed(1)),
+      };
+    });
+  }
+
+  function handleZoneResizeEnd(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!zoneResize || zoneResize.pointerId !== event.pointerId) return;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    setZoneResize(null);
+  }
+
+  function rotateZoneById(zoneId: string, degrees: number) {
+    updateZone(zoneId, (zone) => ({
+      ...zone,
+      rotation: (zone.rotation + degrees + 360) % 360,
+    }));
+  }
+
+  async function prepareDraftAndOpenMainForm() {
+    setIsPreparingDraft(true);
+    setDraftPreparationError("");
+    setDraftPreparationSuccess("");
+
+    try {
+      const stateByIndex = getSubmissionStateByIndex();
+      const snapshots = await createConfiguredSnapshots(stateByIndex, assets);
+
+      if (snapshots.length === 0) {
+        throw new Error("Bitte mindestens ein Logo auf einer Zone platzieren.");
+      }
+
+      sessionStorage.setItem(
+        KONFIGURATOR_SUBMISSION_DRAFT_KEY,
+        JSON.stringify({
+          activeWorkwearIndex,
+          workwearStateByIndex: stateByIndex,
+          snapshots,
+          printMaterial,
+          createdAt: new Date().toISOString(),
+        }),
+      );
+
+      setDraftPreparationSuccess(
+        "Konfiguration vorbereitet. Weiterleitung zum Kontaktformular...",
+      );
+      window.location.href = "/#kontakt";
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unbekannter Fehler";
+      setDraftPreparationError(message);
+    } finally {
+      setIsPreparingDraft(false);
+    }
+  }
+
+  return (
+    <>
+      <Navbar />
+      <main
+        className="min-h-screen bg-cover bg-center bg-no-repeat bg-fixed px-4 pb-16 pt-36 sm:px-6 sm:pt-44"
+      >
+        <div className="mx-auto max-w-7xl " >
+          <h1 className="text-center text-3xl text-black sm:text-4xl">
+           Die Konfiguration dient als Grundlage für deine Anfrage.<br></br>
+            Nach Prüfung erhältst du ein individuelles Angebot.
+          </h1>
+          {!hasStartedConfigurator ? (
+            <ProductSelectionSection
+              onStartConfigurator={startConfiguratorForProduct}
+            />
+          ) : (
+          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+            <div className="mt-8 grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+              <aside className="rounded-3xl border border-white/15 bg-black/45 p-4 sm:p-5">
+                <button
+                  type="button"
+                  onClick={backToProductSelection}
+                  className="mb-3 w-full rounded-md bg-nordwerk-orange px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90"
+                >
+                  ← Zur Produktauswahl
+                </button>
+
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-lg font-semibold text-white">Assets</h2>
+                </div>
+                <p className="mt-1 text-sm text-white/65">
+                  Logo per Drag and Drop oder Klick einer Zone zuweisen.
+                </p>
+                <p className="mt-1 text-xs text-white/50">
+                  Zonen pro Bild: {zones.length} / {maxZonesForCurrentImage}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setIsUploadModalOpen(true)}
+                  className="mt-4 w-full rounded-md bg-nordwerk-orange px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90"
+                >
+                  + Bilder hochladen
+                </button>
+
+                <div className="mt-4 max-h-105 space-y-3 overflow-auto pr-1">
+                  {assets.length === 0 ? (
+                    <div className="rounded-lg border border-white/15 bg-black/30 p-4 text-sm text-white/60">
+                      Noch keine Bilder hochgeladen.
+                    </div>
+                  ) : (
+                    assets.map((asset) => (
+                      <DraggableAssetCard
+                        key={asset.id}
+                        asset={asset}
+                        onAssign={assignAssetToSelectedZone}
+                        onRemove={removeAsset}
+                      />
+                    ))
+                  )}
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {zones.map((zone) => (
+                    <button
+                      key={zone.id}
+                      type="button"
+                      onClick={() => setSelectedZoneId(zone.id)}
+                      className={`rounded-full px-3 py-2 text-xs transition ${selectedZone?.id === zone.id ? "bg-nordwerk-orange text-black" : "bg-white/10 text-white hover:bg-white/15"}`}
+                    >
+                      {zone.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-white/15 bg-white/5 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+                    Aktive Zone
+                  </p>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-base font-semibold text-white">
+                        {selectedZone ? selectedZone.label : "-"}
+                      </p>
+                    </div>
+                    {selectedAsset ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedZone) {
+                            clearZone(selectedZone.id);
+                          }
+                        }}
+                        className="rounded-md border border-red-300/35 px-3 py-2 text-xs font-medium text-red-200 transition hover:border-red-200/60 hover:text-white"
+                      >
+                        Bild Entfernen
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="flex-1 rounded-md bg-white/10 py-2 text-xs font-medium text-white transition hover:bg-white/20 disabled:opacity-40"
+                      onClick={() => rotateArtwork(-5)}
+                      disabled={!selectedAsset}
+                    >
+                      ↺ Links
+                    </button>
+                    <button
+                      type="button"
+                      className="flex-1 rounded-md bg-white/10 py-2 text-xs font-medium text-white transition hover:bg-white/20 disabled:opacity-40"
+                      onClick={() => rotateArtwork(5)}
+                      disabled={!selectedAsset}
+                    >
+                      ↻ Rechts
+                    </button>
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="h-9 w-9 rounded-md bg-white/10 text-white disabled:opacity-40"
+                      onClick={() =>
+                        updateZoneSize(
+                          (selectedZone?.w ?? INITIAL_ZONE_RECT.w) - 1,
+                        )
+                      }
+                      disabled={!selectedZone}
+                    >
+                      -
+                    </button>
+                    <input
+                      type="range"
+                      min={7.5}
+                      max={15}
+                      step={0.5}
+                      value={selectedZone?.w ?? INITIAL_ZONE_RECT.w}
+                      onChange={(event) =>
+                        updateZoneSize(Number(event.target.value))
+                      }
+                      disabled={!selectedZone}
+                      className="w-full accent-orange-400 disabled:opacity-40"
+                    />
+                    <button
+                      type="button"
+                      className="h-9 w-9 rounded-md bg-white/10 text-white disabled:opacity-40"
+                      onClick={() =>
+                        updateZoneSize(
+                          (selectedZone?.w ?? INITIAL_ZONE_RECT.w) + 1,
+                        )
+                      }
+                      disabled={!selectedZone}
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setPreviewOnly((previous) => !previous)}
+                    className="mt-4 w-full rounded-md border border-white/25 bg-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white transition hover:bg-white/15"
+                  >
+                    {previewOnly ? "Bearbeitung anzeigen" : "Nur Bild anzeigen"}
+                  </button>
+
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-white/15 bg-white/5 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+                    Druckmaterial
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="printMaterial"
+                        value="druck"
+                        checked={printMaterial === "druck"}
+                        onChange={(e) => setPrintMaterial(e.target.value as PrintMaterial)}
+                        className="cursor-pointer"
+                      />
+                      <span className="text-sm text-white">Druck</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="printMaterial"
+                        value="strick"
+                        checked={printMaterial === "strick"}
+                        onChange={(e) => setPrintMaterial(e.target.value as PrintMaterial)}
+                        className="cursor-pointer"
+                      />
+                      <span className="text-sm text-white">Strick</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-white/15 bg-white/5 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+                    Anfrage ueber Hauptformular
+                  </p>
+                  <p className="mt-2 text-xs text-white/65">
+                    Die Konfiguration wird gespeichert und im Kontaktformular auf
+                    der Startseite mitgesendet.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={prepareDraftAndOpenMainForm}
+                    disabled={isPreparingDraft}
+                    className="mt-3 w-full rounded-md bg-nordwerk-orange px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isPreparingDraft
+                      ? "Konfiguration wird vorbereitet..."
+                      : "Zum Kontaktformular"}
+                  </button>
+                  {draftPreparationSuccess ? (
+                    <p className="mt-2 text-xs text-emerald-300">
+                      {draftPreparationSuccess}
+                    </p>
+                  ) : null}
+                  {draftPreparationError ? (
+                    <p className="mt-2 text-xs text-red-300">
+                      {draftPreparationError}
+                    </p>
+                  ) : null}
+                </div>
+              </aside>
+
+              <section className="rounded-3xl border border-white/15 bg-black/45 p-4 sm:p-6">
+                <div className="mt-5 rounded-4xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),rgba(0,0,0,0.18)_48%,rgba(0,0,0,0.4)_100%)] p-4 sm:p-8">
+                  <div className="mx-auto max-w-155">
+                    <div className="relative">
+                      <div
+                        ref={(node) => {
+                          previewFrameRef.current = node;
+                          setPreviewDropRef(node);
+                        }}
+                        className="relative mx-auto w-full overflow-hidden"
+                        style={{ aspectRatio: "768 / 1320", overscrollBehavior: "contain" }}
+                      >
+                        <div
+                          className="absolute inset-0 origin-center transition-transform duration-200"
+                          style={{ transform: "none" }}
+                        >
+                          <img
+                            src={activeWorkwearImage}
+                            alt={`Workwear ${getWorkwearProductShortLabel(activeProduct)}`}
+                            className="pointer-events-none select-none object-contain absolute inset-0 h-full w-full"
+                          />
+
+                          {previewOnly
+                            ? zones.map((zone) => {
+                                const zoneAsset = zone.assetId
+                                  ? assetMap.get(zone.assetId)
+                                  : undefined;
+                                if (!zoneAsset) return null;
+
+                                return (
+                                  <div
+                                    key={zone.id}
+                                    style={{
+                                      left: zone.x + "%",
+                                      top: zone.y + "%",
+                                      width: zone.w + "%",
+                                      height: zone.h + "%",
+                                    }}
+                                    className="absolute overflow-hidden"
+                                  >
+                                    <img
+                                      src={zoneAsset.src}
+                                      alt={zoneAsset.name}
+                                      className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain"
+                                      style={{
+                                        transform: getArtworkTransform(zone),
+                                        transformOrigin: "center",
+                                      }}
+                                    />
+                                  </div>
+                                );
+                              })
+                            : zones.map((zone) => (
+                                <WorkwearZone
+                                  key={zone.id}
+                                  zone={zone}
+                                  asset={
+                                    zone.assetId
+                                      ? assetMap.get(zone.assetId)
+                                      : undefined
+                                  }
+                                  isSelected={selectedZone?.id === zone.id}
+                                  previewIsOver={
+                                    isOverPreview &&
+                                    selectedZone?.id === zone.id
+                                  }
+                                  zoneDropPrefix={ZONE_DROP_PREFIX}
+                                  onSelect={setSelectedZoneId}
+                                  onZoneDragStart={handleZoneDragStart}
+                                  onZoneDragMove={handleZoneDragMove}
+                                  onZoneDragEnd={handleZoneDragEnd}
+                                  onZoneResizeStart={handleZoneResizeStart}
+                                  onZoneResizeMove={handleZoneResizeMove}
+                                  onZoneResizeEnd={handleZoneResizeEnd}
+                                  onClearAsset={clearZone}
+                                  onRotate={(degrees) => rotateZoneById(zone.id, degrees)}
+                                />
+                              ))}
+                          {/* Antizonen anzeigen - nur beim Bewegen */}
+                          {zoneDrag && getForbiddenZonesForImage(activeWorkwearIndex).map((forbiddenZone, index) => (
+                            <div
+                              key={`forbidden-${index}`}
+                              style={{
+                                left: forbiddenZone.x + "%",
+                                top: forbiddenZone.y + "%",
+                                width: forbiddenZone.w + "%",
+                                height: forbiddenZone.h + "%",
+                              }}
+                              className="absolute bg-red-500/30 border-2 border-red-500 pointer-events-none"
+                              title="Antizone - Gesperrter Bereich"
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Thumbnail Gallery */}
+                      <div className="flex justify-center">
+                        <div ref={thumbnailStripRef} className="flex w-fit gap-2 overflow-x-auto pb-2">
+                          {visibleProductImageIndexes.map((index) => {
+                            const imageUrl = WORKWEAR_IMAGES[index];
+
+                            return (
+                            <div key={index} className="shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => selectWorkwearImage(index)}
+                              className={`relative overflow-hidden border-2 transition ${
+                                activeWorkwearIndex === index
+                                  ? 'border-nordwerk-orange shadow-lg shadow-nordwerk-orange/40'
+                                  : 'border-white/20 hover:border-white/40'
+                              }`}
+                              style={{ width: '62px', height: '92px', aspectRatio: '768 / 1366' }}
+                              aria-label={`${getWorkwearProductShortLabel(activeProduct)} ${getWorkwearSideLabel(imageUrl)}`}
+                            >
+                              <img
+                                src={imageUrl}
+                                alt={`${getWorkwearProductShortLabel(activeProduct)} Thumbnail ${getWorkwearSideLabel(imageUrl)}`}
+                                className="h-full w-full object-cover"
+                              />
+                            </button>
+                            <p className="mt-1 text-center text-[11px] font-medium text-white/80">
+                              {getWorkwearSideLabel(imageUrl)}
+                            </p>
+                            </div>
+                          );})}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </DndContext>
+          )}
+        </div>
+      </main>
+      <Footer />
+      <UploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onFilesSelected={(files) => {
+          handleFiles(files);
+        }}
+      />
+    </>
+  );
+}
