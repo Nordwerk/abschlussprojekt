@@ -3,7 +3,7 @@ import {
   DEFAULT_WORKWEAR_INDEX,
   WORKWEAR_IMAGES,
 } from "../constants";
-import type { ZoneRect } from "../types";
+import type { ZoneRectangle } from "../types";
 import {
   getOrCreateWorkwearZoneState,
   getValidSelectedZoneId,
@@ -26,10 +26,10 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function useWorkwearPersistence(
-  zones: ZoneRect[],
+  zones: ZoneRectangle[],
   selectedZoneId: string,
   activeWorkwearIndex: number,
-  onSetZones: (zones: ZoneRect[]) => void,
+  onSetZones: (zones: ZoneRectangle[]) => void,
   onSetSelectedZoneId: (id: string) => void,
   onSetActiveWorkwearIndex: (index: number) => void,
   onSetAvailableImageIndexes: (indexes: Set<number> | null) => void,
@@ -75,7 +75,7 @@ export function useWorkwearPersistence(
             continue;
           }
 
-          const zones = zonesCandidate as ZoneRect[];
+          const zones = zonesCandidate as ZoneRectangle[];
           const selectedZoneCandidate = rawEntry.selectedZoneId;
           const selectedZoneId =
             typeof selectedZoneCandidate === "string"

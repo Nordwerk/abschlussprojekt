@@ -1,5 +1,5 @@
 import { WORKWEAR_IMAGES } from "./constants";
-import type { Asset, ZoneRect } from "./types";
+import type { Asset, ZoneRectangle } from "./types";
 import type { WorkwearZoneState } from "./workwearState";
 
 export type ConfiguratorSnapshot = {
@@ -11,7 +11,7 @@ export type ConfiguratorSnapshot = {
 const SNAPSHOT_WIDTH = 768;
 const SNAPSHOT_HEIGHT = 1320;
 
-function hasAssignedArtwork(zones: ZoneRect[]) {
+function hasAssignedArtwork(zones: ZoneRectangle[]) {
   return zones.some((zone) => zone.assetId !== null);
 }
 
@@ -59,7 +59,7 @@ function drawImageContain(
 function drawArtworkInZone(
   context: CanvasRenderingContext2D,
   assetImage: HTMLImageElement,
-  zone: ZoneRect,
+  zone: ZoneRectangle,
 ) {
   const zoneX = (zone.x / 100) * SNAPSHOT_WIDTH;
   const zoneY = (zone.y / 100) * SNAPSHOT_HEIGHT;
@@ -92,7 +92,7 @@ function drawArtworkInZone(
 
 async function renderSnapshotDataUrl(
   imageUrl: string,
-  zones: ZoneRect[],
+  zones: ZoneRectangle[],
   assetMap: Map<string, Asset>,
 ) {
   const canvas = document.createElement("canvas");

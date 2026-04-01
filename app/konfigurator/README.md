@@ -36,7 +36,7 @@ page.tsx (Orchestrator)
 | Datei | Beschreibung |
 |-------|-------------|
 | [**page.tsx**](page.tsx) | **Orchestrator** - verbindet Hooks & Komponenten (~300 Zeilen) |
-| [**types.ts**](types.ts) | TypeScript Typdefinitionen (ZoneRect, Asset, etc.) |
+| [**types.ts**](types.ts) | TypeScript Typdefinitionen (ZoneRectangle, Asset, etc.) |
 | [**constants.ts**](constants.ts) | Workwear-Daten, Forbidden Zones, UIConstants |
 | [**productHelpers.ts**](productHelpers.ts) | Product-bezogene Helper-Funktionen |
 | [**submission.ts**](submission.ts) | Canvas-Rendering & Snapshot-Erstellung |
@@ -71,7 +71,7 @@ page.tsx (Orchestrator)
 
 ## Datenstrukturen
 
-### ZoneRect (Zone)
+### ZoneRectangle (Zone)
 ```typescript
 {
   id: string;              // Eindeutige ID

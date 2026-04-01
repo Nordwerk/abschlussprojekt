@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback, type PointerEvent as ReactPointerEvent } from "react";
 import { clamp, clampZoneWidth } from "../utils";
 import { isZoneOverlappingForbiddenZone } from "../constants";
-import type { ZoneRect, ZoneDragState, ZoneResizeState } from "../types";
+import type { ZoneRectangle, ZoneDragState, ZoneResizeState } from "../types";
 
-export function useZoneState(initialZones: ZoneRect[], initialSelectedZoneId: string) {
-  const [zones, setZones] = useState<ZoneRect[]>(initialZones);
+export function useZoneState(initialZones: ZoneRectangle[], initialSelectedZoneId: string) {
+  const [zones, setZones] = useState<ZoneRectangle[]>(initialZones);
   const [selectedZoneId, setSelectedZoneId] = useState(initialSelectedZoneId);
   const [zoneDrag, setZoneDrag] = useState<ZoneDragState | null>(null);
   const [zoneResize, setZoneResize] = useState<ZoneResizeState | null>(null);
@@ -14,7 +14,7 @@ export function useZoneState(initialZones: ZoneRect[], initialSelectedZoneId: st
   const selectedZone = zones.find((zone) => zone.id === selectedZoneId) ?? zones[0] ?? null;
 
   const updateZone = useCallback(
-    (zoneId: string, updater: (zone: ZoneRect) => ZoneRect) => {
+    (zoneId: string, updater: (zone: ZoneRectangle) => ZoneRectangle) => {
       setZones((previous) =>
         previous.map((zone) => (zone.id === zoneId ? updater(zone) : zone))
       );
@@ -23,7 +23,7 @@ export function useZoneState(initialZones: ZoneRect[], initialSelectedZoneId: st
   );
 
   const updateSelectedZone = useCallback(
-    (updater: (zone: ZoneRect) => ZoneRect) => {
+    (updater: (zone: ZoneRectangle) => ZoneRectangle) => {
       if (!selectedZone) return;
       updateZone(selectedZone.id, updater);
     },

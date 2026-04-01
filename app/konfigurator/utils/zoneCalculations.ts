@@ -1,5 +1,5 @@
 import { INITIAL_ZONE_RECT } from "../constants";
-import type { ZoneRect } from "../types";
+import type { ZoneRectangle } from "../types";
 
 /**
  * Clamps a value between a minimum and maximum value
@@ -18,7 +18,7 @@ export function clampZoneWidth(width: number) {
 /**
  * Creates a new zone at a grid position with 2-column layout
  */
-export function createZone(index: number): ZoneRect {
+export function createZone(index: number): ZoneRectangle {
   const gap = 2;
   const clampedWidth = clampZoneWidth(INITIAL_ZONE_RECT.w);
   const clampedHeight = Number(

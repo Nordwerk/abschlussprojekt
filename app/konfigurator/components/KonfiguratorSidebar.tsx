@@ -1,13 +1,13 @@
 "use client";
 
-import type { Asset, ZoneRect, PrintMaterial } from "../types";
+import type { Asset, ZoneRectangle, PrintMaterial } from "../types";
 import DraggableAssetCard from "./DraggableAssetCard";
 import { INITIAL_ZONE_RECT } from "../constants";
 
 interface KonfiguratorSidebarProps {
   assets: Asset[];
-  zones: ZoneRect[];
-  selectedZone: ZoneRect | null;
+  zones: ZoneRectangle[];
+  selectedZone: ZoneRectangle | null;
   selectedAsset: Asset | undefined;
   maxZonesForCurrentImage: number;
   previewOnly: boolean;

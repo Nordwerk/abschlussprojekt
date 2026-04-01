@@ -9,7 +9,7 @@ export type Asset = {
   src: string;
 };
 
-export type ZoneRect = {
+export type ZoneRectangle = {
   id: string;
   label: string;
   x: number;

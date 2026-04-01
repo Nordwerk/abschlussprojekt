@@ -1,16 +1,16 @@
-import type { ZoneRect } from "./types";
+import type { ZoneRectangle } from "./types";
 import { createZone } from "./utils";
 import { getMaxZonesForImage } from "./constants";
 
 export type WorkwearZoneState = {
-  zones: ZoneRect[];
+  zones: ZoneRectangle[];
   selectedZoneId: string;
   nextZoneIndex: number;
 };
 
-function normalizeZonesForImage(zones: ZoneRect[], imageIndex: number): ZoneRect[] {
+function normalizeZonesForImage(zones: ZoneRectangle[], imageIndex: number): ZoneRectangle[] {
   const maxZones = getMaxZonesForImage(imageIndex);
-  const zonesByIndex = new Map<number, ZoneRect>();
+  const zonesByIndex = new Map<number, ZoneRectangle>();
 
   for (const zone of zones) {
     const match = /^zone-(\d+)$/.exec(zone.id);
@@ -24,7 +24,7 @@ function normalizeZonesForImage(zones: ZoneRect[], imageIndex: number): ZoneRect
     zonesByIndex.set(zoneIndex, zone);
   }
 
-  const normalizedZones: ZoneRect[] = [];
+  const normalizedZones: ZoneRectangle[] = [];
   for (let zoneIndex = 1; zoneIndex <= maxZones; zoneIndex += 1) {
     normalizedZones.push(zonesByIndex.get(zoneIndex) ?? createZone(zoneIndex));
   }
@@ -45,7 +45,7 @@ export function createInitialWorkwearZoneState(
 }
 
 export function getValidSelectedZoneId(
-  zones: ZoneRect[],
+  zones: ZoneRectangle[],
   preferredZoneId: string,
 ) {
   if (zones.some((zone) => zone.id === preferredZoneId)) return preferredZoneId;
@@ -53,7 +53,7 @@ export function getValidSelectedZoneId(
 }
 
 export function snapshotWorkwearZoneState(
-  zones: ZoneRect[],
+  zones: ZoneRectangle[],
   selectedZoneId: string,
   nextZoneIndex: number,
   imageIndex: number,

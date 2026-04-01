@@ -2,7 +2,7 @@
 
 import { type PointerEvent as ReactPointerEvent } from "react";
 import WorkwearZone from "./WorkwearZone";
-import type { Asset, ZoneRect, ZoneDragState } from "../types";
+import type { Asset, ZoneRectangle, ZoneDragState } from "../types";
 import {
   WORKWEAR_IMAGES,
   ZONE_DROP_PREFIX,
@@ -17,8 +17,8 @@ import {
 
 interface KonfiguratorPreviewProps {
   activeWorkwearIndex: number;
-  zones: ZoneRect[];
-  selectedZone: ZoneRect | null;
+  zones: ZoneRectangle[];
+  selectedZone: ZoneRectangle | null;
   assetMap: Map<string, Asset>;
   previewOnly: boolean;
   isOverPreview: boolean;

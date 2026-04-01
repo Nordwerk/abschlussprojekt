@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { PREVIEW_DROP_ID, ZONE_DROP_PREFIX } from "../constants";
 import type { DragEndEvent } from "@dnd-kit/core";
-import type { Asset, ZoneRect } from "../types";
+import type { Asset, ZoneRectangle } from "../types";
 
 export function useAssetManagement() {
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -43,7 +43,7 @@ export function useAssetManagement() {
   }, []);
 
   const clearAssetFromZones = useCallback(
-    (assetId: string, zones: ZoneRect[], setZones: (zones: ZoneRect[]) => void) => {
+    (assetId: string, zones: ZoneRectangle[], setZones: (zones: ZoneRectangle[]) => void) => {
       setZones(
         zones.map((zone) =>
           zone.assetId !== assetId
@@ -64,8 +64,8 @@ export function useAssetManagement() {
     (
       zoneId: string,
       assetId: string,
-      zones: ZoneRect[],
-      setZones: (zones: ZoneRect[]) => void,
+      zones: ZoneRectangle[],
+      setZones: (zones: ZoneRectangle[]) => void,
       setSelectedZoneId: (id: string) => void
     ) => {
       setSelectedZoneId(zoneId);
@@ -88,8 +88,8 @@ export function useAssetManagement() {
   const handleDragEnd = useCallback(
     (
       event: DragEndEvent,
-      zones: ZoneRect[],
-      selectedZone: ZoneRect | null,
+      zones: ZoneRectangle[],
+      selectedZone: ZoneRectangle | null,
       assignAssetToZoneFn: (zoneId: string, assetId: string) => void
     ) => {
       const over = event.over;

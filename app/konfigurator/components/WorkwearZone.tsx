@@ -4,10 +4,10 @@ import { useDroppable } from '@dnd-kit/core';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { Trash2, RotateCcw, RotateCw } from 'lucide-react';
 
-import type { Asset, ZoneRect } from '../types';
+import type { Asset, ZoneRectangle } from '../types';
 
 type WorkwearZoneProps = {
-  zone: ZoneRect;
+  zone: ZoneRectangle;
   asset: Asset | undefined;
   isSelected: boolean;
   previewIsOver: boolean;
