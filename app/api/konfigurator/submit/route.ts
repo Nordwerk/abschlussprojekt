@@ -20,7 +20,7 @@ type SubmitPayload = {
   activeWorkwearIndex: number;
   workwearStateByIndex: Record<string, unknown>;
   snapshots: SnapshotPayload[];
-  printMaterial?: "druck" | "strick";
+  printMaterial?: "druck" | "stick";
 };
 
 const MAX_SNAPSHOTS = 12;
@@ -232,7 +232,7 @@ async function sendNotificationMail(
     : "<p>Keine Snapshot-Links vorhanden.</p>";
 
   const printMaterialHtml = printMaterial
-    ? `<p><strong>Druckmaterial:</strong> ${escapeHtml(printMaterial === "druck" ? "Druck" : "Strick")}</p>`
+    ? `<p><strong>Druckmaterial:</strong> ${escapeHtml(printMaterial === "druck" ? "Druck" : "Stick")}</p>`
     : "";
 
   await transporter.sendMail({

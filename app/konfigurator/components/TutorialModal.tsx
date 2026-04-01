@@ -89,7 +89,7 @@ export function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
               <div className="shrink-0 text-3xl">✅</div>
               <div>
                 <h3 className="font-bold text-black text-lg">5. Druckmaterial wählen & Speichern</h3>
-                <p className="text-black/70 text-sm mt-1">Material: Druck oder Strick wählen. &quot;Zum Kontaktformular&quot; klicken → Design gespeichert!</p>
+                <p className="text-black/70 text-sm mt-1">Material: Druck oder Stick wählen. &quot;Zum Kontaktformular&quot; klicken → Design gespeichert!</p>
               </div>
             </div>
 

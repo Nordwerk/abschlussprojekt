@@ -7,6 +7,6 @@ export type KonfiguratorSubmissionDraft = {
   activeWorkwearIndex: number;
   workwearStateByIndex: Record<number, WorkwearZoneState>;
   snapshots: ConfiguratorSnapshot[];
-  printMaterial: "druck" | "strick";
+  printMaterial: "druck" | "stick";
   createdAt: string;
 };
