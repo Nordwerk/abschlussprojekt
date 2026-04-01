@@ -226,7 +226,7 @@ export function KonfiguratorSidebar({
               type="radio"
               name="printMaterial"
               value="strick"
-              checked={printMaterial === "strick"}
+              checked={printMaterial === "stick"}
               onChange={(e) => onPrintMaterialChange(e.target.value as PrintMaterial)}
               className="cursor-pointer"
             />

@@ -43,4 +43,4 @@ export type ZoneResizeState = {
   startZoneH: number;
 };
 
-export type PrintMaterial = "druck" | "strick";
+export type PrintMaterial = "druck" | "stick";
